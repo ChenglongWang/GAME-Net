@@ -1,0 +1,20 @@
+# gitignore for the GNN repository
+
+# Ignore all figures in the root
+
+/*.svg
+/*.png
+
+Images/
+Manuscript/
+__pycache__/
+Data/
+BM_dataset/
+Hyperparameter_Optimization/
+Models/
+Performance_BMdataset/
+Tests/
+
+/*.csv
+
+*.gz
