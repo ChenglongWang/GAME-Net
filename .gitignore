@@ -16,5 +16,5 @@ Performance_BMdataset/
 Tests/
 
 /*.csv
-
+.vscode/settings.json
 *.gz
