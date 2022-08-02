@@ -3,7 +3,8 @@
 __author__ = "Santiago Morandi"
 
 import torch
-from torch.nn import Linear, GRU 
+from torch.nn import Linear, GRU, Sequential
+import torch_geometric 
 from torch_geometric.nn import Set2Set, CGConv, Set2Set, SAGEConv, GraphMultisetTransformer
 import torch.nn.functional as F
 
@@ -141,6 +142,91 @@ class SantyxNet(torch.nn.Module):
         out = self.sigma(self.lin5(out))
         out = self.sigma(self.conv3(out, data.edge_index))
         out = self.sigma(self.lin6(out))
+        #----------------------
+        # GRAPH LEVEL (POOLING)
+        #----------------------
+        out = self.pool(out, data.batch, data.edge_index)
+        return out.view(-1)
+    
+class FlexibleNet(torch.nn.Module):
+    def __init__(self, 
+                 dim: int=128,                  
+                 N_linear: int=3,
+                 N_conv: int=3,
+                 adj_conv: bool=True,
+                 in_features: int=NODE_FEATURES,                 
+                 sigma=torch.nn.ReLU(),
+                 bias: bool=True,
+                 conv=SAGEConv,
+                 pool=GraphMultisetTransformer, 
+                 pool_ratio: float=0.25, 
+                 pool_heads: int=4, 
+                 pool_seq: list[str]=["GMPool_G", "SelfAtt", "GMPool_I"], 
+                 pool_layer_norm: bool=False):
+        """Flexible Net for Hyperparamater optimization
+
+        Args:
+            dim (int, optional): Layer depth. Defaults to 128.
+            N_linear (int, optional): Number of NN layers. Defaults to 3.
+            N_conv (int, optional): Number of convolutional layers. Defaults to 3.
+            adj_conv (bool, optional): Whether include linear layer between each convolution. Defaults to True.
+            in_features (int, optional): Input graph node dimensionality. Defaults to NODE_FEATURES.
+            sigma (_type_, optional): Activation function. Defaults to torch.nn.ReLU().
+            bias (bool, optional): Bias inclusion. Defaults to True.
+            conv (_type_, optional): Convolutional Layer. Defaults to SAGEConv.
+            pool (_type_, optional): Pooling Layer. Defaults to GraphMultisetTransformer.
+        """
+        super(FlexibleNet, self).__init__()
+        self.dim = dim
+        self.in_features = in_features
+        self.sigma = sigma
+        self.conv = conv
+        self.num_conv_layers = N_conv
+        self.num_linear_layers = N_linear
+        self.adj_conv = adj_conv        
+        # Instantiation of the building blocks of the GNN
+        self.input_layer = Linear(self.in_features, self.dim, bias=bias)
+        self.inlin1 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin2 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin3 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin4 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin5 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin6 = Linear(self.dim, self.dim, bias=bias)
+        self.inlin7 = Linear(self.dim, self.dim, bias=bias)
+        self.lin_block = [self.inlin1, self.inlin2, self.inlin3, self.inlin4, self.inlin5, self.inlin6, self.inlin7]
+        
+        self.lin1 = Linear(self.dim, self.dim, bias=bias)
+        self.lin2 = Linear(self.dim, self.dim, bias=bias)
+        self.lin3 = Linear(self.dim, self.dim, bias=bias)
+        self.lin4 = Linear(self.dim, self.dim, bias=bias)
+        self.lin5 = Linear(self.dim, self.dim, bias=bias)
+        self.lin6 = Linear(self.dim, self.dim, bias=bias)
+        self.conv1 = conv(self.dim, self.dim, bias=bias)
+        self.conv2 = conv(self.dim, self.dim, bias=bias)
+        self.conv3 = conv(self.dim, self.dim, bias=bias)
+        self.conv4 = conv(self.dim, self.dim, bias=bias)
+        self.conv5 = conv(self.dim, self.dim, bias=bias)
+        self.conv6 = conv(self.dim, self.dim, bias=bias)
+        self.adj_block = [self.lin1, self.lin2, self.lin3, self.lin4, self.lin5, self.lin6]
+        self.conv_block = [self.conv1, self.conv2, self.conv3, self.conv4, self.conv5, self.conv6]
+        self.pool = pool(self.dim, self.dim, 1, 
+                         num_nodes=300,         # 300
+                         pooling_ratio=pool_ratio,
+                         pool_sequences=pool_seq,
+                         num_heads=pool_heads,           
+                         layer_norm=pool_layer_norm)                                                             
+        
+    def forward(self, data):
+        #-----------------------------
+        # NODE LEVEL (MESSAGE-PASSING)
+        #-----------------------------        
+        out = self.sigma(self.input_layer(data.x))   
+        for layer in range(self.num_linear_layers):
+            out = self.sigma(self.lin_block[layer](out))
+        for layer in range(self.num_conv_layers):
+            if self.adj_conv:
+                out = self.sigma(self.lin_block[layer](out))
+            out = self.sigma(self.conv_block[layer](out, data.edge_index))
         #----------------------
         # GRAPH LEVEL (POOLING)
         #----------------------
