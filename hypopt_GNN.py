@@ -5,6 +5,8 @@ __author__ = "Santiago Morandi"
 import argparse
 import sys
 import time
+import os
+os.environ["TUNE_RESULT_DELIM"] = "/"
 
 import torch
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -15,8 +17,9 @@ from ray import tune
 from ray.tune.schedulers import ASHAScheduler
 from ray.tune import Stopper
 import ray
-from constants import NODE_FEATURES
+import pandas as pd
 
+from constants import NODE_FEATURES
 from nets import FlexibleNet
 from functions import train_loop, test_loop, scale_target, create_loaders
 from processed_datasets import FG_dataset, BM_dataloader
@@ -29,10 +32,10 @@ HYPERPARAMS["target_scaling"] = "std"
 HYPERPARAMS["batch_size"] = tune.choice([16, 32, 64])           
 HYPERPARAMS["epochs"] = 200               
 HYPERPARAMS["loss_function"] = torch.nn.functional.l1_loss   
-HYPERPARAMS["lr0"] = tune.choice([0.01, 0.001, 0.0001])       
-HYPERPARAMS["patience"] = tune.choice([5, 7, 10])              
+HYPERPARAMS["lr0"] = tune.choice([0.001, 0.0001])       
+HYPERPARAMS["patience"] = tune.choice([5, 7])              
 HYPERPARAMS["factor"] = tune.choice([0.5, 0.7, 0.9])          
-HYPERPARAMS["minlr"] = tune.choice([1e-7, 1e-8])             
+HYPERPARAMS["minlr"] = tune.choice([1e-8])             
 HYPERPARAMS["betas"] = (0.9, 0.999)     
 HYPERPARAMS["eps"] = tune.choice([1e-8, 1e-9])               
 HYPERPARAMS["weight_decay"] = 0         
@@ -42,14 +45,14 @@ HYPERPARAMS["dim"] = tune.choice([128, 256])
 HYPERPARAMS["sigma"] = tune.choice([torch.nn.ReLU()])  
 HYPERPARAMS["bias"] = tune.choice([True, False])  
 HYPERPARAMS["adj_conv"] = tune.choice([True, False])  
-HYPERPARAMS["n_linear"] = tune.choice([1, 3, 5]) 
+HYPERPARAMS["n_linear"] = tune.choice([0, 1, 3, 5]) 
 HYPERPARAMS["n_conv"] = tune.choice([3, 4, 5]) 
 HYPERPARAMS["conv_layer"] = tune.choice([SAGEConv, GATv2Conv]) 
 HYPERPARAMS["pool_layer"] =  tune.choice([GraphMultisetTransformer])           
 HYPERPARAMS["conv_normalize"] = False   
 HYPERPARAMS["conv_root_weight"] = True
 HYPERPARAMS["pool_ratio"] = tune.choice([0.25, 0.5, 0.75])        
-HYPERPARAMS["pool_heads"] = tune.choice([2, 4, 6])
+HYPERPARAMS["pool_heads"] = tune.choice([1, 2, 4])
 HYPERPARAMS["pool_seq"] = tune.choice([["GMPool_I"], 
                                        ["GMPool_G"], 
                                        ["GMPool_G", "GMPool_I"],
@@ -75,16 +78,6 @@ def train_function(config, checkpoint_dir=None):
                                                                     test=config["test_set"])    
     # Select device 
     device = "cuda" if torch.cuda.is_available() else "cpu"    
-    # Call GNN model 
-    # model = SantyxNet(dim=config["dim"],
-    #                   sigma=config["sigma"], 
-    #                   bias=config["bias"], 
-    #                   conv_normalize=config["conv normalize"], 
-    #                   conv_root_weight=config["conv root weight"], 
-    #                   pool_ratio=config["pool ratio"], 
-    #                   pool_heads=config["pool heads"], 
-    #                   pool_seq=config["pool seq"], 
-    #                   pool_layer_norm=config["pool layer norm"]).to(device)  
     
     model = FlexibleNet(dim=config["dim"],
                         N_linear=config["n_linear"], 
@@ -124,38 +117,55 @@ def train_function(config, checkpoint_dir=None):
         else:
             print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
                   .format(iteration, lr, train_MAE*std, val_MAE))      
-        # Collect performance metric
+        # Collect performance metric (BM_dataset)
         BM_MAE = test_loop(model, BM_dataloader, device=device, std=std, mean=mean, scaled_graph_label=False)                    
         tune.report(BM_MAE=BM_MAE, FG_MAE=test_MAE, epoch=iteration)
     
 if __name__ == "__main__":
-    PARSER = argparse.ArgumentParser(description="Run hyperparameter optimization with Ray Tune applying ASHA algorithm.")
+    PARSER = argparse.ArgumentParser(description="Perform hyperparameter optimization with Ray-Tune with ASynchronous Hyperband Algorithm (ASHA).")
     PARSER.add_argument("-o", "--output", type=str, dest="o", 
-                        help="Name of the folder where results will be stored.")
+                        help="Name of the directory where results will be stored.")
     PARSER.add_argument("-s", "--samples", default=10, type=int, dest="s",
                         help="Number of samples during the search.")
     PARSER.add_argument("-v", "--verbose", default=1, type=int, dest="v",
                         help="Verbosity of tune.run() function")
+    PARSER.add_argument("-gr", "--grace", default=15, type=int, dest="grace", 
+                        help="Grace period of ASHA.")
+    PARSER.add_argument("-maxit", "--max-iterations", default=150, type=int, dest="max_iter", 
+                        help="Maximum number of training iterations (epochs) allowed by ASHA.")
+    PARSER.add_argument("-rf", "--reduction-factor", default=4, type=int, dest="rf", 
+                        help="Reduction factor of ASHA.")
+    PARSER.add_argument("-bra", "--brackets", default=1, type=int, dest="bra", 
+                        help="Number of brackets of ASHA.")
+    PARSER.add_argument("-gpt", "--gpu-per-trial", default=1.0, type=float, dest="gpu_per_trial", 
+                        help="Number of gpus per trial (can be fractional).")
+    
     ARGS = PARSER.parse_args()
     
     hypopt_scheduler = ASHAScheduler(time_attr="epoch",
-                                     metric="FG_MAE",
+                                     metric="BM_MAE",
                                      mode="min",
-                                     grace_period=20,
-                                     reduction_factor=4,
-                                     brackets=1)
+                                     grace_period=ARGS.grace,
+                                     reduction_factor=ARGS.rf,
+                                     max_t=ARGS.max_iter,
+                                     brackets=ARGS.bra)
     ray.init(ignore_reinit_error=True)
-    analysis = tune.run(train_function,
+    result = tune.run(train_function,
                         name=ARGS.o,
                         time_budget_s=3600*24,
                         config=HYPERPARAMS,
                         scheduler=hypopt_scheduler,
-                        #checkpoint_freq=5,
-                        #progress_reporter=CLIReporter,
-                        resources_per_trial={"cpu":4, "gpu":0.5},
+                        resources_per_trial={"cpu":1, "gpu":ARGS.gpu_per_trial},
                         num_samples=ARGS.s, 
                         verbose=ARGS.v,
                         log_to_file=True, 
-                        local_dir="./Hyperparameter_Optimization")
+                        local_dir="./Hyperparameter_Optimization",
+                        raise_on_failed_trial=False)
+    best_config = result.get_best_config(metric="BM_MAE", mode="min", scope="last")
+    best_config_df = pd.DataFrame(best_config)    
+    best_config_df.to_csv("./Hyperparameter_Optimization/{}/best_config.csv".format(ARGS.o), sep="/")
+    print(best_config)
+    exp_df = result.results_df
+    exp_df.to_csv("./Hyperparameter_Optimization/{}/summary.csv".format(ARGS.o), sep="/")
 
     
