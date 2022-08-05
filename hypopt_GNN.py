@@ -174,7 +174,7 @@ if __name__ == "__main__":
                         local_dir="./Hyperparameter_Optimization",
                         raise_on_failed_trial=False)
     best_config = result.get_best_config(metric="BM_MAE", mode="min", scope="last")
-    best_config_df = pd.DataFrame(best_config)    
+    best_config_df = pd.DataFrame.from_dict(best_config, orient="index")    
     best_config_df.to_csv("./Hyperparameter_Optimization/{}/best_config.csv".format(ARGS.o), sep="/")
     print(best_config)
     exp_df = result.results_df
