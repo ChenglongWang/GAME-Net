@@ -155,7 +155,6 @@ if __name__ == "__main__":
                                                               min_lr=HYPERPARAMS["minlr"])
     
     # Run the learning process    
-    best_val_error = None
     loss_list = []  # Store loss function trend during training
     train_list = [] # Store training MAE during training
     val_list = []   # Store validation MAE during training

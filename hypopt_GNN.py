@@ -4,7 +4,7 @@ __author__ = "Santiago Morandi"
 
 import argparse
 import sys
-import time
+from datetime import date, datetime
 import os
 os.environ["TUNE_RESULT_DELIM"] = "/"
 
@@ -23,6 +23,7 @@ from constants import NODE_FEATURES
 from nets import FlexibleNet
 from functions import train_loop, test_loop, scale_target, create_loaders
 from processed_datasets import FG_dataset, BM_dataloader
+from post_training import create_model_report
 
 HYPERPARAMS = {}
 # Process-related
@@ -60,66 +61,6 @@ HYPERPARAMS["pool_seq"] = tune.choice([["GMPool_I"],
                                        ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]])
 HYPERPARAMS["pool_layer_norm"] = False 
 
-def train_function(config, checkpoint_dir=None):
-    """
-    Function for hyperparameter tuning via RayTune.
-    Args:
-        config (dict): Dictionary with search space (hyperparameters)
-    """    
-    # Generate Datasets and scale target
-    train_loader, val_loader, test_loader = create_loaders(FG_dataset,
-                                                           config["splits"],
-                                                           config["batch_size"], 
-                                                           config["test_set"])
-    train_loader, val_loader, test_loader, mean, std = scale_target(train_loader,
-                                                                    val_loader,
-                                                                    test_loader, 
-                                                                    mode=config["target_scaling"], 
-                                                                    test=config["test_set"])    
-    # Select device 
-    device = "cuda" if torch.cuda.is_available() else "cpu"    
-    
-    model = FlexibleNet(dim=config["dim"],
-                        N_linear=config["n_linear"], 
-                        N_conv=config["n_conv"], 
-                        adj_conv=config["adj_conv"], 
-                        in_features=NODE_FEATURES, 
-                        sigma=config["sigma"], 
-                        bias=config["bias"], 
-                        conv=config["conv_layer"], 
-                        pool=config["pool_layer"], 
-                        pool_ratio=config["pool_ratio"], 
-                        pool_heads=config["pool_heads"], 
-                        pool_seq=config["pool_seq"], 
-                        pool_layer_norm=config["pool_layer_norm"]).to(device)     
-    # Call optimizer and lr-scheduler
-    optimizer = Adam(model.parameters(),
-                     lr=config["lr0"], 
-                     betas=config["betas"],
-                     eps=config["eps"], 
-                     weight_decay=config["weight_decay"], 
-                     amsgrad=config["amsgrad"])
-    lr_scheduler = ReduceLROnPlateau(optimizer,
-                                     mode='min',
-                                     factor=config["factor"],
-                                     patience=config["patience"],
-                                     min_lr=config["minlr"])    
-    # Run training
-    for iteration in range(1, config["epochs"]+1):
-        lr = lr_scheduler.optimizer.param_groups[0]['lr']
-        _, train_MAE = train_loop(model, device, train_loader, optimizer, config["loss_function"])  
-        val_MAE = test_loop(model, val_loader, device, std)
-        lr_scheduler.step(val_MAE)  
-        if config["test_set"]:
-            test_MAE = test_loop(model, test_loader, device, std)                                           
-            print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.4f} eV  Validation MAE: {:.4f} eV '             
-                  'Test MAE: {:.4f} eV'.format(iteration, lr, train_MAE*std, val_MAE, test_MAE))
-        else:
-            print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
-                  .format(iteration, lr, train_MAE*std, val_MAE))      
-        # Collect performance metric (BM_dataset)
-        BM_MAE = test_loop(model, BM_dataloader, device=device, std=std, mean=mean, scaled_graph_label=False)                    
-        tune.report(BM_MAE=BM_MAE, FG_MAE=test_MAE, epoch=iteration)
     
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="Perform hyperparameter optimization with Ray-Tune with ASynchronous Hyperband Algorithm (ASHA).")
@@ -138,10 +79,81 @@ if __name__ == "__main__":
     PARSER.add_argument("-bra", "--brackets", default=1, type=int, dest="bra", 
                         help="Number of brackets of ASHA.")
     PARSER.add_argument("-gpt", "--gpu-per-trial", default=1.0, type=float, dest="gpu_per_trial", 
-                        help="Number of gpus per trial (can be fractional).")
-    
+                        help="Number of gpus per trial (can be fractional).")    
     ARGS = PARSER.parse_args()
+        
+    def train_function(config, checkpoint_dir=None):
+        """
+        Function for hyperparameter tuning via RayTune.
+        Args:
+            config (dict): Dictionary with search space (hyperparameters)
+        """    
+        train_loader, val_loader, test_loader = create_loaders(FG_dataset,
+                                                               config["splits"],
+                                                               config["batch_size"], 
+                                                               config["test_set"])
+        train_loader, val_loader, test_loader, mean, std = scale_target(train_loader,
+                                                                        val_loader,
+                                                                        test_loader, 
+                                                                        mode=config["target_scaling"], 
+                                                                        test=config["test_set"])    
+        device = "cuda" if torch.cuda.is_available() else "cpu"            
+        model = FlexibleNet(dim=config["dim"],
+                            N_linear=config["n_linear"], 
+                            N_conv=config["n_conv"], 
+                            adj_conv=config["adj_conv"], 
+                            in_features=NODE_FEATURES, 
+                            sigma=config["sigma"], 
+                            bias=config["bias"], 
+                            conv=config["conv_layer"], 
+                            pool=config["pool_layer"], 
+                            pool_ratio=config["pool_ratio"], 
+                            pool_heads=config["pool_heads"], 
+                            pool_seq=config["pool_seq"], 
+                            pool_layer_norm=config["pool_layer_norm"]).to(device)     
+        optimizer = Adam(model.parameters(),
+                         lr=config["lr0"], 
+                         betas=config["betas"],
+                         eps=config["eps"], 
+                         weight_decay=config["weight_decay"], 
+                         amsgrad=config["amsgrad"])
+        lr_scheduler = ReduceLROnPlateau(optimizer,
+                                         mode='min',
+                                         factor=config["factor"],
+                                         patience=config["patience"],
+                                         min_lr=config["minlr"]) 
     
+        train_list = [] # Store training MAE during training
+        val_list = []   # Store validation MAE during training
+        test_list = []  # Store test MAE during training   
+        for iteration in range(1, config["epochs"]+1):
+            lr = lr_scheduler.optimizer.param_groups[0]['lr']
+            _, train_MAE = train_loop(model, device, train_loader, optimizer, config["loss_function"])  
+            val_MAE = test_loop(model, val_loader, device, std)
+            lr_scheduler.step(val_MAE)  
+            if config["test_set"]:
+                test_MAE = test_loop(model, test_loader, device, std)                                           
+                print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.4f} eV  Validation MAE: {:.4f} eV '             
+                      'Test MAE: {:.4f} eV'.format(iteration, lr, train_MAE*std, val_MAE, test_MAE))
+            else:
+                print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
+                      .format(iteration, lr, train_MAE*std, val_MAE))      
+            BM_MAE = test_loop(model, BM_dataloader, device=device, std=std, mean=mean, scaled_graph_label=False)                    
+            tune.report(BM_MAE=BM_MAE, FG_MAE=test_MAE, epoch=iteration)
+            
+            train_list.append(train_MAE * std)
+            val_list.append(val_MAE)
+            test_list.append(test_MAE)
+        if BM_MAE <= 0.5:  # If the etrapolation performance is good, save the model!
+            time = str(datetime.now())[11:]
+            time = time[:8]
+            create_model_report("{}_{}".format(ARGS.o, time),
+                                model,
+                                (train_loader, val_loader, test_loader),
+                                (mean, std),
+                                config,
+                                (train_list, val_list, test_list))
+        
     hypopt_scheduler = ASHAScheduler(time_attr="epoch",
                                      metric="BM_MAE",
                                      mode="min",
