@@ -5,8 +5,8 @@ import numpy as np
 
 # Parameters for the geometry conversion to graph
 VORONOI_TOLERANCE = 0.25     # Tolerance for the connectivity search
-SCALING_FACTOR = 1.2         # Scaling factor for Cu Ir Ni Os Pd Pt Rh Ru 
-SCALING_FACTOR_II = 1.5      # Scaling factor for Ag Au Cd Zn
+SCALING_FACTOR = 1.5         # Scaling factor for Cu Ir Ni Os Pd Pt Rh Ru (1.2 original)
+SCALING_FACTOR_II = 1.5      # Scaling factor for Ag Au Cd Zn             (1.5 original)
 CORDERO_ORIGINAL = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
            'As': 1.19, 'At': 1.50, 'Ba': 2.15, 'Be': 0.96, 'Bi': 1.48,
            'B' : 0.84, 'Br': 1.20, 'Cd': 1.44, 'Ca': 1.76, 'C' : 0.76,

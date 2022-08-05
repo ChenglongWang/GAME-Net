@@ -51,11 +51,20 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     """
     pass
 
-def plotter(graph, node_size=400, font_color="white", font_weight="bold", alpha=0.9, 
-            arrowsize=10, width=1.2, k=0.01, scale=1, dpi=600, figsize=(4,4)):
+def plotter(graph,
+            node_size: int=400,
+            font_color: str="white",
+            font_weight: str="bold",
+            alpha: float=0.9, 
+            arrowsize: int=10,
+            width: float=1.2,
+            k: float=0.01,
+            scale: float=1,
+            dpi: int=600,
+            figsize: tuple[int, int]=(4,4)):
     """
     Plot graph with atom labels and colors. 
-    kamada_kawai_layout engine is applied as it gives the best visualization appearance.
+    Kamada_kawai_layout engine is applied as it gives the best visualization appearance.
     Args:
         graph(torch_geometric.data.Data): graph object of the chemical ensemble.
     """

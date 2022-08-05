@@ -2,16 +2,12 @@
 
 __author__ = "Santiago Morandi"
 
-from datetime import date, datetime
-from graphviz import Graph
-from sklearn.preprocessing import OneHotEncoder
-
-import torch_geometric
 from paths import paths
 from itertools import product
 import math
 from collections import namedtuple
 
+from sklearn.preprocessing import OneHotEncoder
 from pyRDTP.geomio import file_to_mol
 from pyRDTP.molecule import Molecule
 import networkx as nx
@@ -41,7 +37,7 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
     else:
         return int((1 - 1/splits) * 100), math.ceil(100 / splits)
 
-def mol_to_ensemble(molecule,
+def mol_to_ensemble(molecule: Molecule,
                     voronoi_tolerance: float=VORONOI_TOLERANCE,
                     atom_rad_dict: dict=CORDERO, 
                     second_order: bool=False) -> Molecule:
@@ -66,7 +62,8 @@ def mol_to_ensemble(molecule,
         for neighbour in atom.connections + [atom]:
             if neighbour not in new_atoms:
                 new_atoms.append(neighbour)
-    if second_order:
+    # 3b) Collect metal neighbours of the metal atoms directly in contact with adsorbate
+    if second_order: 
         for atom in new_atoms:
             if atom in METALS:
                 for neighbour in atom.connections + [atom]:
@@ -79,7 +76,7 @@ def mol_to_ensemble(molecule,
     new_molecule.atom_add_list(new_atoms)
     new_molecule.connection_clear()
     new_molecule.cell_p_add(molecule.cell_p.copy())
-    # 3) Define connectivity of the final ensemble
+    # 4) Define connectivity of the final ensemble
     new_molecule = connectivity_search_voronoi(new_molecule, tolerance=voronoi_tolerance)
     return new_molecule
 
@@ -88,7 +85,7 @@ def mol_to_ensemble_CAVITY(molecule: Molecule,
                            metal_rad_dict: dict) -> Molecule:
     """
     Extract adsorbate + interacting metal atoms from the whole system
-    Function based on pyRDTP.
+    Function based on pyRDTP. FOR SAC CAVITIES
     Args:
         molecule(pyRDTP.molecule.Molecule): molecule object.
         tolerance(float): parameter for connectivity search 
@@ -119,11 +116,12 @@ def mol_to_ensemble_CAVITY(molecule: Molecule,
     new_molecule = connectivity_search_voronoi(new_molecule, tolerance=voronoi_tolerance)    
     return new_molecule
 
-def ensemble_to_graph(molecule: Molecule) -> nx.Graph:
+def ensemble_to_graph(molecule: Molecule, 
+                      second_order: bool=False) -> nx.Graph:
     """
     Convert pyRDTP Molecule to NetworkX graph.
-    NB: Connections between metal atoms are filtered out.
-        To remove this feature, delete the if statement in the function.
+    If second order neighbours are included, the metal-metal connnectons are kept.
+    If only nearest metal atoms included, this action is not performed.
     Args:
         molecule(pyRDTP.molecule.Molecule): molecule object
     Returns:
@@ -135,7 +133,7 @@ def ensemble_to_graph(molecule: Molecule) -> nx.Graph:
     molecule.atom_index()
     for atom in molecule.atoms:
         for neighbour in atom.connections:
-            if atom.element == neighbour.element and atom.element in METALS:
+            if (atom.element == neighbour.element and atom.element in METALS) and second_order == False:
                 continue  # Neglect metal-metal connections
             connections_1.append(atom.index)
             connections_2.append(neighbour.index)
@@ -146,7 +144,7 @@ def ensemble_to_graph(molecule: Molecule) -> nx.Graph:
         mol_graph.add_edge(*connection)
     return mol_graph, (elem_lst, (tuple(connections_1), tuple(connections_2)))
 
-def get_energy(dataset:str) -> dict:
+def get_energy(dataset: str) -> dict:
     """
     Extract the raw energy label for each sample of the dataset from the energies.dat file.    
     Args:
@@ -162,7 +160,7 @@ def get_energy(dataset:str) -> dict:
         ener_dict[split[0]] = float(split[1])
     return ener_dict
 
-def get_structures(dataset:str) -> dict:
+def get_structures(dataset: str) -> dict:
     """
     Extract the structure for each sample of the dataset from the 
     CONTCAR files in the "structures" folder.
@@ -176,9 +174,10 @@ def get_structures(dataset:str) -> dict:
         mol_dict[contcar.stem] = file_to_mol(contcar, 'contcar', bulk=False)
     return mol_dict
 
-def get_tuples(dataset:str,
+def get_tuples(dataset: str,
                voronoi_tolerance: float,
-               metal_radii_dict: dict) -> dict:
+               metal_radii_dict: dict, 
+               second_order: bool=False) -> dict:
     """
     Generate a dictionary of namedtuple objects for each sample in the dataset.
     For datasets done by Santiago Morandi.
@@ -205,15 +204,15 @@ def get_tuples(dataset:str,
                 print(f'{key} not found')
                 continue
             try:
-                mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict)
-                graph = ensemble_to_graph(mol)
+                mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict, second_order)
+                graph = ensemble_to_graph(mol, second_order)
             except ValueError:
                 print(f'{key} not converting to graph')
                 continue
         else: # Gas molecules
             energy = ener_dict[key]
-            mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict)
-            graph = ensemble_to_graph(mol)
+            mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict, second_order)
+            graph = ensemble_to_graph(mol, second_order)
         ntuple_dict[key] = ntuple(code=key, mol=mol, graph=graph, energy=energy)
     return ntuple_dict
 
@@ -223,8 +222,8 @@ def export_tuples(filename: str,
     Write text file for GNN raw data from tuple dictionary representing the 
     dataset.
     Args:
-        filename(str): file to write
-        tuple_dict(tuple): tuple dictionary
+        filename (str): file to write
+        tuple_dict (tuple): tuple dictionary
     """
     with open(filename, 'w') as outfile:
         for code, inter in tuple_dict.items():
@@ -622,18 +621,6 @@ def test_loop(model,
         print("Dataset size = {}".format(len(loader.dataset)))
         print("Mean Absolute Error = {} eV".format(error))
     return error 
-    
-def save_model(model):
-    """save GNN model with specific name convention"""
-    today = date.today()
-    today_str = str(today.strftime("%d-%b-%Y"))
-    today_str = today_str.replace("-", "")
-    time = str(datetime.now())[11:]
-    time = time[:5]
-    time = time.replace(":","")
-    model_name = "GNN" + "_" + today_str + "_" + time
-    torch.save(model.state_dict(), "./Models/{}.pth".format(model_name))
-    return "Model saved in .\"Models/{}.pth\"".format(model_name)
 
 def get_mean_std_from_model(model_path:str) -> tuple[float]:
     """Get mean and standard deviation used for scaling the target values 
@@ -657,7 +644,8 @@ def get_mean_std_from_model(model_path:str) -> tuple[float]:
 def contcar_to_graph(contcar_file: str,
                      voronoi_tolerance: float=VORONOI_TOLERANCE,
                      atomic_radius_dict: dict=CORDERO, 
-                     one_hot_encoder=ENCODER) -> Data:
+                     one_hot_encoder=ENCODER, 
+                     second_order: bool=False) -> Data:
     """Create graph representation from VASP CONTCAR file
 
     Args:
@@ -670,8 +658,8 @@ def contcar_to_graph(contcar_file: str,
         graph (torch_geometric.data.Data): Graph object representing the system under study.
     """
     mol = file_to_mol(contcar_file, 'contcar', bulk=False)
-    mol = mol_to_ensemble(mol, voronoi_tolerance, atomic_radius_dict)
-    nx_graph = ensemble_to_graph(mol)
+    mol = mol_to_ensemble(mol, voronoi_tolerance, atomic_radius_dict, second_order=second_order)
+    nx_graph = ensemble_to_graph(mol, second_order=second_order)
     elem = list(nx_graph[1][0])
     source = list(nx_graph[1][1][0])
     target = list(nx_graph[1][1][1])
@@ -717,7 +705,8 @@ def get_graph_sample(system: str,
                      encoder: OneHotEncoder=ENCODER,
                      gas_mol: bool=False,
                      family: str=None, 
-                     surf_multiplier: int=None) -> Data:
+                     surf_multiplier: int=None, 
+                     second_order: bool=False) -> Data:
     """ 
     Generate labelled graph samples from VASP files.
     
@@ -735,7 +724,8 @@ def get_graph_sample(system: str,
     graph = contcar_to_graph("{}/CONTCAR".format(system),
                              voronoi_tolerance=voronoi_tolerance, 
                              atomic_radius_dict=atomic_radius_dict, 
-                             one_hot_encoder=encoder) 
+                             one_hot_encoder=encoder, 
+                             second_order=second_order) 
     graph.y = system_energy
     if gas_mol == False:
         surf_energy = Outcar("{}/OUTCAR".format(surface)).final_energy

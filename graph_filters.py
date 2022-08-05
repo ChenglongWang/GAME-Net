@@ -238,3 +238,26 @@ def explode_graph(graph: torch_geometric.data.Data, removed_node: int):
             edge[j, k] = (ff(int(edge_list[k][j].item())))
     exploded_graph = torch_geometric.data.Data(x, edge)
     return exploded_graph
+
+def isomorphism_test(graph: Data, graph_list: list, eps: float=0.05) -> bool:
+    """Perform isomorphism test for the input graph before including it in the dataset.
+
+    Args:
+        graph (Data): Input graph
+        graph_list (list): graph list against which the input graph is tested
+        eps (float): tolerance value for the energy difference in eV. Default to 0.05 eV.
+    Returns:
+        bool: Whether the graph passed the isomorphism test
+    """
+    if len(graph_list) == 0:
+        return True
+    formula = graph.formula
+    energy = graph.y
+    for rival_graph in graph_list:
+        if formula == rival_graph.formula and np.abs(energy - rival_graph.y) < eps:
+            return False
+        else:
+            continue
+    return True
+        
+        

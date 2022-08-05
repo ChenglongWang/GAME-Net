@@ -2,21 +2,23 @@
 Module for post-processing and collecting data.
 """
 
-# TODO Find a way to save model architecture and load it from file
-import matplotlib.pyplot as plt
-from functions import get_graph_formula, get_number_atoms_from_label, split_percentage
-from plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
-from constants import ENCODER, FG_FAMILIES, DPI
-import seaborn as sns
 import os
+from datetime import date, datetime
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
-from graph_tools import plotter
 import csv
 import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
 import torch.nn.functional as F
 from torchinfo import summary
+
+from constants import ENCODER, FG_FAMILIES, DPI
+from functions import get_graph_formula, get_number_atoms_from_label, split_percentage
+from graph_tools import plotter
+from plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
 
 def create_model_report(model_name: str,
                         model,
@@ -36,6 +38,13 @@ def create_model_report(model_name: str,
         hyperparams (dict): Dictionary with the hyperparameters of the learning process
         mae_lists (tuple[list]): MAE of the train/val/test sets wrt epoch
     """
+    # Report day and time of the run
+    today = date.today()
+    today_str = str(today.strftime("%d-%b-%Y"))
+    time = str(datetime.now())[11:]
+    time = time[:8]
+    run_period = "{}, {}\n".format(today_str, time)
+    
     
     # Unfold parameters
     train_loader = loaders[0]
@@ -94,6 +103,7 @@ def create_model_report(model_name: str,
         # Performance Report
         file1 = open("./Models/{}/performance.txt".format(model_name), "w")
         file1.write("Training Process\n")
+        file1.write(run_period)
         file1.write("Dataset Size = {}\n".format(N_tot))
         file1.write("Data Split (Train/Val) = {}-{} %\n".format(split_percentage(hyperparams["splits"], hyperparams["test set"])))
         file1.write("Target scaling = {}\n".format(hyperparams["target scaling"]))
@@ -184,6 +194,7 @@ def create_model_report(model_name: str,
     # Performance Report
     file1 = open("./Models/{}/performance.txt".format(model_name), "w")
     file1.write("Learning Process\n")
+    file1.write(run_period)
     file1.write("Dataset Size = {}\n".format(N_tot))
     file1.write("Data Split (Train/Val/Test) = {}-{}-{} %\n".format(*split_percentage(hyperparams["splits"])))
     file1.write("Target scaling = {}\n".format(hyperparams["target scaling"]))

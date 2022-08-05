@@ -101,7 +101,7 @@ class SantyxNet(torch.nn.Module):
                  conv_normalize: bool=False,
                  conv_root_weight: bool=True, 
                  pool_ratio: float=0.25, 
-                 pool_heads: int=4, 
+                 pool_heads: int=2, 
                  pool_seq: list[str]=["GMPool_G", "SelfAtt", "GMPool_I"], 
                  pool_layer_norm: bool=False):
         super(SantyxNet, self).__init__()
@@ -123,7 +123,7 @@ class SantyxNet(torch.nn.Module):
         self.pool = GraphMultisetTransformer(self.dim,              # self.dim
                                              self.dim,              # self.dim
                                              1,                     # 1 
-                                             num_nodes=300,         # 300
+                                             num_nodes=100,         # 300
                                              pooling_ratio=pool_ratio,
                                              pool_sequences=pool_seq,
                                              num_heads=pool_heads,           

@@ -15,7 +15,6 @@ from functions import create_loaders, scale_target, train_loop, test_loop
 from processed_datasets import FG_dataset
 from nets import FlexibleNet
 from post_training import create_model_report
-from constants import NODE_FEATURES
 
 # Possible hyperparameters for loss function, convolutional layer and GMT pool sequence
 loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
@@ -132,8 +131,7 @@ if __name__ == "__main__":
     model = FlexibleNet(dim=HYPERPARAMS["dim"],
                         N_linear=HYPERPARAMS["n_linear"], 
                         N_conv=HYPERPARAMS["n_conv"], 
-                        adj_conv=HYPERPARAMS["adj_conv"], 
-                        in_features=NODE_FEATURES, 
+                        adj_conv=HYPERPARAMS["adj_conv"],  
                         sigma=HYPERPARAMS["sigma"], 
                         bias=HYPERPARAMS["bias"], 
                         conv=HYPERPARAMS["conv_layer"], 

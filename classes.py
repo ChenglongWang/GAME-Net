@@ -4,7 +4,7 @@ from torch_geometric.data import InMemoryDataset, Data
 import torch
 import numpy as np
 from constants import ENCODER, FAMILY_DICT, METALS
-from graph_filters import global_filter
+from graph_filters import global_filter, isomorphism_test
 from graph_tools import plotter
 from functions import get_graph_formula
 
@@ -30,7 +30,7 @@ class HetGraphDataset(InMemoryDataset):
         return self.root / 'Dataset.dat'  
     @property
     def processed_file_names(self):  # Processed dataset directory 
-        return self.root / 'Dataset_tol025.dat' 
+        return self.root / 'Dataset_tol025_sf15_2nd_order_iso2.dat' 
 
     def download(self):
         pass
@@ -73,8 +73,10 @@ class HetGraphDataset(InMemoryDataset):
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family)
             graph_formula = get_graph_formula(data, ENCODER.categories_[0])
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family, formula=graph_formula)
-            if global_filter(data):  
-                data_list.append(data)
+            if global_filter(data):
+                if isomorphism_test(data, data_list):
+                     data_list.append(data)  
+                #data_list.append(data)
             else:
                 plotter(data)            
         data, slices = self.collate(data_list)
