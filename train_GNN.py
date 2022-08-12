@@ -88,7 +88,7 @@ if __name__ == "__main__":
     # Process-related
     HYPERPARAMS["splits"] = ARGS.s          # Splits among which the data are partitioned to create train-val-test sets
     HYPERPARAMS["target_scaling"] = "std"   # Target scaling approach (std=standardization)
-    HYPERPARAMS["test_set"] = True          # True=Generate train-val-test sets. False=Generate train-val (train with whole FG-dataset)
+    HYPERPARAMS["test_set"] = False          # True=Generate train-val-test sets. False=Generate train-val (train with whole FG-dataset)
     HYPERPARAMS["batch_size"] = ARGS.b           
     HYPERPARAMS["epochs"] = ARGS.e               
     HYPERPARAMS["loss_function"] = LOSS_FUNCTION   
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     HYPERPARAMS["factor"] = ARGS.f           # Decreasing factor of the lr scheduler
     HYPERPARAMS["minlr"] = ARGS.minlr             
     HYPERPARAMS["betas"] = (0.9, 0.999)      # Adam optimizer: betas
-    HYPERPARAMS["eps"] = 1e-8                # Adam optimizer: eps
+    HYPERPARAMS["eps"] = 1e-9                # Adam optimizer: eps
     HYPERPARAMS["weight_decay"] = 0          # Adam optimizer: weight decay
     HYPERPARAMS["amsgrad"] = True            # Adam optimizer: amsgrad    
     # Model-related
@@ -171,19 +171,20 @@ if __name__ == "__main__":
         # Adjust lr based on validation error                             
         lr_scheduler.step(val_MAE)
         # Run epoch over test set                                                                            
-        test_MAE = test_loop(model, test_loader, device, std)                             
-    
-        if LOSS_FUNCTION == l1_loss:
-            print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.4f} eV,  Validation MAE: {:.4f} eV, '
-              'Test MAE: {:.4f} eV'.format(epoch, lr, train_MAE*std, val_MAE, test_MAE))
-        else:
-            print('Epoch {:03d}: LR={:.7f}  Loss={:.6f}  Validation MAE: {:.6f} eV, '
-                  'Test MAE: {:.6f} eV'.format(epoch, lr, loss, val_MAE, test_MAE))     
+        #test_MAE = test_loop(model, test_loader, device, std)                             
         
+        if HYPERPARAMS["test_set"]:
+            test_MAE = test_loop(model, test_loader, device, std, mean)         
+            print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.4f} eV  Validation MAE: {:.4f} eV '             
+                  'Test MAE: {:.4f} eV'.format(epoch, lr, train_MAE*std, val_MAE, test_MAE))
+            test_list.append(test_MAE)
+        else:
+            print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
+                  .format(epoch, lr, train_MAE*std, val_MAE))
+         
         loss_list.append(loss)
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
-        test_list.append(test_MAE)
         
         # fig, ax = E_violinplot_train(model, test_loader, std_tv, set(FG_FAMILIES), epoch)
         # plt.savefig("./gif/violin_{}.png".format(epoch), dpi=200, bbox_inches='tight')

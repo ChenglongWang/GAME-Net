@@ -177,13 +177,15 @@ def get_structures(dataset: str) -> dict:
 def get_tuples(dataset: str,
                voronoi_tolerance: float,
                metal_radii_dict: dict, 
-               second_order: bool=False) -> dict:
+               second_order: bool) -> dict:
     """
     Generate a dictionary of namedtuple objects for each sample in the dataset.
     For datasets done by Santiago Morandi.
     Args:
         group_name(str): name of the dataset.
         voronoi_tolerance(float): parameter for the connectivity search in pyRDTP.
+        second_order (bool): Whether to include in the graph the metal atoms in contact with the metal
+                             atoms directly touching the adsorbate
     Returns:
         ntuple_dict(dict): dictionary of namedtuple objects.    
     """
@@ -247,13 +249,14 @@ def geometry_to_graph_analysis(dataset:str):
         wrong_samples(list): list of the badly represented data.
         dataset_size(int): dataset size.
     """
-    if dataset[:3] == "gas":
-        print("{} dataset contains gas phase molecules".format(dataset))
-        print("------------------------------------------")
-        return "This function is just for datasets containing adsorption systems!"
     with open("./Data/{}/Dataset.dat".format(dataset)) as f:
         all_lines = f.readlines()
     dataset_size = int(len(all_lines)/5)
+    if dataset[:3] == "gas":
+        print("{} dataset contains gas phase molecules".format(dataset))
+        print("------------------------------------------")
+        return dataset_size
+    
     lines = []
     labels = []
     for i in range(dataset_size):
@@ -392,9 +395,9 @@ def create_loaders(datasets:tuple,
     test_n = len(test_loader)
     total_n = train_n + val_n + test_n
     train_loader = DataLoader(train_loader, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_loader, batch_size=batch_size, shuffle=False)
+    val_loader = DataLoader(val_loader, batch_size=batch_size)
     if test == True:
-        test_loader = DataLoader(test_loader, batch_size=batch_size, shuffle=False)
+        test_loader = DataLoader(test_loader, batch_size=batch_size)
         a, b, c = split_percentage(split)
         print("Data split (train/val/test): {}/{}/{} %".format(a, b, c))
         print("Training data = {} Validation data = {} Test data = {} (Total = {})".format(train_n, val_n, test_n, total_n))
@@ -736,3 +739,20 @@ def get_graph_sample(system: str,
     if family is not None:
         graph.family = family
     return graph
+
+def load_model(path: str):
+    """Load pre-trained GNN model
+
+    Args:
+        path (str): Directory containing the model. It must contain:
+                    1) performance.txt file to extract mean and std
+                    2) model.pth GNN architecture
+                    3) GNN.pth GNN model parameters
+    """
+    model = torch.load("{}/model.pth".format(path))
+    model.load_state_dict(torch.load("{}GNN.pth".format(path)))
+    model.eval()
+    model.to("cpu")
+    mean, std = get_mean_std_from_model(path)
+    return model, mean, std
+    

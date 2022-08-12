@@ -44,19 +44,16 @@ def create_model_report(model_name: str,
     time = str(datetime.now())[11:]
     time = time[:8]
     run_period = "{}, {}\n".format(today_str, time)
-    
-    
+        
     # Unfold parameters
     train_loader = loaders[0]
     val_loader = loaders[1]
     test_loader = loaders[2]
     
     # Scaling parameters
-    if hyperparams["target scaling"] == "std":
+    if hyperparams["target_scaling"] == "std":
         mean_tv = scaling_params[0]
         std_tv = scaling_params[1]
-    elif hyperparams["target scaling"] == "norm":
-        pass #TODO
     else:
         pass
     
@@ -75,11 +72,10 @@ def create_model_report(model_name: str,
     
     # Store info about GNN architecture 
     with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
-        print(summary(model, batch_dim=hyperparams["batch size"], verbose=2), file=f)
+        print(summary(model, batch_dim=hyperparams["batch_size"], verbose=2), file=f)
     
-    # Save GNN model object
-    torch.save(model, "./Models/{}/model.pth".format(model_name))
-    # Save GNN model parameters 
+    # Save GNN model object and parameters
+    torch.save(model, "./Models/{}/model.pth".format(model_name)) 
     torch.save(model.state_dict(), "./Models/{}/GNN.pth".format(model_name))
         
     # Store info of device on which model training has been performed
@@ -87,30 +83,30 @@ def create_model_report(model_name: str,
         with open('./Models/{}/device.txt'.format(model_name), 'w') as f:
             print(device, file=f)
         
-    if hyperparams["loss function"] == F.l1_loss:
+    if hyperparams["loss_function"] == F.l1_loss:
         loss = "MAE"
-    elif hyperparams["loss function"] == F.mse_loss:
+    elif hyperparams["loss_function"] == F.mse_loss:
         loss = "MSE"
-    elif hyperparams["loss function"] == F.huber_loss:
+    elif hyperparams["loss_function"] == F.huber_loss:
         loss = "Huber"
     else:
         loss = "None"
         
     N_train = len(train_loader.dataset)
     N_val = len(val_loader.dataset)
-    if hyperparams["test set"] == False: 
+    if hyperparams["test_set"] == False: 
         N_tot = N_train + N_val
         # Performance Report
         file1 = open("./Models/{}/performance.txt".format(model_name), "w")
         file1.write("Training Process\n")
         file1.write(run_period)
         file1.write("Dataset Size = {}\n".format(N_tot))
-        file1.write("Data Split (Train/Val) = {}-{} %\n".format(split_percentage(hyperparams["splits"], hyperparams["test set"])))
-        file1.write("Target scaling = {}\n".format(hyperparams["target scaling"]))
+        file1.write("Data Split (Train/Val) = {}-{} %\n".format(*split_percentage(hyperparams["splits"], hyperparams["test_set"])))
+        file1.write("Target scaling = {}\n".format(hyperparams["target_scaling"]))
         file1.write("Dataset (train+val) mean = {:.6f} eV\n".format(scaling_params[0]))
         file1.write("Dataset (train+val) standard deviation = {:.6f} eV\n".format(scaling_params[1]))
         file1.write("Epochs = {}\n".format(hyperparams["epochs"]))
-        file1.write("Batch Size = {}\n".format(hyperparams["batch size"]))
+        file1.write("Batch Size = {}\n".format(hyperparams["batch_size"]))
         file1.write("Optimizer = Adam\n")                                            # Kept fixed in this project
         file1.write("Learning Rate scheduler = Reduce Loss On Plateau\n")            # Kept fixed in this project
         file1.write("Initial Learning Rate = {}\n".format(hyperparams["lr0"]))
@@ -197,11 +193,11 @@ def create_model_report(model_name: str,
     file1.write(run_period)
     file1.write("Dataset Size = {}\n".format(N_tot))
     file1.write("Data Split (Train/Val/Test) = {}-{}-{} %\n".format(*split_percentage(hyperparams["splits"])))
-    file1.write("Target scaling = {}\n".format(hyperparams["target scaling"]))
+    file1.write("Target scaling = {}\n".format(hyperparams["target_scaling"]))
     file1.write("Target (train+val) mean = {:.6f} eV\n".format(mean_tv))
     file1.write("Target (train+val) standard deviation = {:.6f} eV\n".format(std_tv))
     file1.write("Epochs = {}\n".format(hyperparams["epochs"]))
-    file1.write("Batch size = {}\n".format(hyperparams["batch size"]))
+    file1.write("Batch size = {}\n".format(hyperparams["batch_size"]))
     file1.write("Optimizer = Adam\n")                                            # Kept fixed in this project
     file1.write("Learning Rate scheduler = Reduce Loss On Plateau\n")            # Kept fixed in this project
     file1.write("Initial learning rate = {}\n".format(hyperparams["lr0"]))

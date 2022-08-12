@@ -144,7 +144,7 @@ if __name__ == "__main__":
             train_list.append(train_MAE * std)
             val_list.append(val_MAE)
             test_list.append(test_MAE)
-        if BM_MAE <= 0.5:  # If the etrapolation performance is good, save the model!
+        if BM_MAE <= 0.5:  # If the extrapolation performance is good, save the model!
             time = str(datetime.now())[11:]
             time = time[:8]
             create_model_report("{}_{}".format(ARGS.o, time),

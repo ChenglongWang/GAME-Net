@@ -21,7 +21,7 @@ class HetGraphDataset(InMemoryDataset):
     - process(): process raw_data and saves it into the processed_dir
     """
     def __init__(self, root, transform=None, pre_transform=None, pre_filter=None):
-        super(HetGraphDataset, self).__init__(root, transform, pre_transform)
+        super(HetGraphDataset, self).__init__(root, transform, pre_transform, pre_filter)
         self.root = root
         self.data, self.slices = torch.load(self.processed_paths[0])
 
@@ -30,7 +30,7 @@ class HetGraphDataset(InMemoryDataset):
         return self.root / 'Dataset.dat'  
     @property
     def processed_file_names(self):  # Processed dataset directory 
-        return self.root / 'Dataset_tol025_sf15_2nd_order_iso2.dat' 
+        return self.root / 'Last_day_summer.dat' 
 
     def download(self):
         pass
@@ -73,19 +73,11 @@ class HetGraphDataset(InMemoryDataset):
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family)
             graph_formula = get_graph_formula(data, ENCODER.categories_[0])
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family, formula=graph_formula)
-            if global_filter(data):
-                if isomorphism_test(data, data_list):
+            if global_filter(data):  # To ensure correct adsorbate representation in the graph
+                if isomorphism_test(data, data_list):  # To ensure that no duplicate graphs are included in the data
                      data_list.append(data)  
                 #data_list.append(data)
             else:
                 plotter(data)            
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
-        
-def dat_to_graph(graph_list:list):
-    """Generate the respective graph object from text
-
-    Args:
-        graph_list (list): list of lines
-    """
-    
