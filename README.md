@@ -1,5 +1,7 @@
 # Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks
 
+<img src="/images/output/video1.gif" width="50%" height="50%"/>
+
 This is the repository of the work related to the article "Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks".
 ## Installation
 
@@ -58,9 +60,15 @@ Also here, two different ways to use the framework are available:
 
 Santiago Morandi, Ph.D. Student, Lopez group at ICIQ (Spain)  
 Sergio Pablo Garcia Carrillo, Ph.D. Student at Lopez Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
-
-
 # Contributors
 
 Zarko Ivkovic, B.Sc. Student, DFT dataset creation and interface testing.
+
+# License
+
+MIT
+
+# Support 
+
+In case you need help or are interested in contributing, feel free to contact us sending an e-mail to smorandi@iciq.es
 
