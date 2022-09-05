@@ -8,7 +8,7 @@
     
 You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo: You should find a file called `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for your new environment (we will use `GNN` here) and use the conda command:  
+2. Create a conda environment. Enter the repo: You should find the file `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for the new environment (we will use `GNN` here) and use the conda command:  
 
     `conda create --name GNN --file GNN_env.txt`  
     
@@ -18,19 +18,25 @@ Check that you have created your new environment by typing `conda env list`: A l
 
     `git clone --branch experimental https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
     
-A new folder `pyrdtp` should be now present in your base repo `gnn_eads`. With the `GNN` environment activated, use pip to install pyRDTP:  
+A new folder `pyrdtp` should be now present in your base repo `gnn_eads`. With the `GNN` environment activated, use pip to install pyRDTP:    
 
     `pip install pyrdtp`  
-    
-Done! In theory now everything is set up to start playing with the GNN framework!  
 
-# How to play with the framework
+To check the correctness of the installation, use `conda list` and see if pyrdtp is present.
+
+4. (Temporary step) Create in the repo the empyt folders `Data` and `Models`: 
+
+    `mkdir Data Models`
+
+As the names suggest, `Data` will store the DFT datasets used to train the GNN in case you work in Training mode (see below), while `Models` will contain the different GNN models that you will get from Zenodo if you choose to work in Inference mode (see below), and the models you will generate if you work in Training mode otherwise.
+Done! In theory now everything is set up to start playing with the GNN framework!  
+# How to play with the GNN framework
 
 You have two possible choices:
 
-- **Inference mode**: Most Likely, you are a curious person and want to check the performance of the GNN models compared to your DFT systems. In this case, you will test the pre-trained models proposed by us and will need to use a few scripts to run the models. 
+- **Inference mode**: Most Likely, you are a curious person and want to check the performance of the GNN models compared to your DFT simulations. In this case, you will test the pre-trained models proposed by us and will need to use a few scripts to run the models. 
 
-- **Training mode**: You will test the whole workflow we had to follow during the creation of the GNN framework. In this case, you will also need the DFT datasets that we used to train the models. Within this mode, you can train GNN models with your own hyperparameter setting, or, if you have enough computational resources, perform hyperparameter optimization with our workflow based on RayTune.
+- **Training mode**: You will test the whole workflow we had to follow during the creation of the GNN framework. In this case, you will need the DFT datasets for training the GNN. Within this mode, you can train the models with your own hyperparameter setting and model architecture, or, if you have enough computational resources, you can also perform hyperparameter optimization with the workflow based on Ray Tune.
 
 ## Inference mode
 
@@ -42,6 +48,11 @@ Within this mode, you can opt among two different options:
 ## Training mode
 
 The DFT datasets and the models are stored in Zenodo (link). The DFT datasets are also uploaded on ioChem-BD (doi)
+Also here, two different ways to use the framework are available:
+
+1. Perform a model training with your own model architecture and hyperparameter settings: In order to do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`.
+
+2. Perform a hyperparameter optimization using the ASynchronous HyperbAnd (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need to manually define the model architecture. the script you have to use in this case is `hypopt_GNN.py`.
 
 
 # Authors
