@@ -7,28 +7,27 @@ This is the repository of the work related to the article "Adsorption Energy of 
 
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads.git`  
     
-You should now have the repo ``gnn_eads`` in your current directory.  
+    You should now have the repo ``gnn_eads`` in your current directory.  
 
 2. Create a conda environment. Enter the repo: You should find the file `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for the new environment (we will use `GNN` here) and use the command:  
 
     `conda create --name GNN --file GNN_env.txt`  
     
-Check that you have created your new environment by typing `conda env list`: A list with all your environments appear, together with the newly created `GNN`. Use `conda activate GNN` to activate it (you will see the name of the current active environment within parentheses on the left of the terminal).  
+    Check that you have created your new environment by typing `conda env list`: A list with all your environments appear, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal).  
 
-3. Install pyRDTP, a package at the base of the GNN framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command):  
+3. Install pyRDTP, a package at the base of the GNN framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command) and install it with pip:  
 
     `git clone --branch experimental https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
-    
-A new folder `pyrdtp` should be now present in your base repo `gnn_eads`. With the `GNN` environment activated, use pip to install pyRDTP:
-    `pip install pyrdtp`  
+    `pip install pyrdtp`
 
-To check the correctness of the installation, use `conda list` and see if pyrdtp is present.
+    To check the correctness of the installation, use `conda list` and see if pyrdtp is present.
 
-4. (Temporary step) Create in the repo the empty folders `Data` and `Models`: 
+4. Create the empty folders `Data` and `Models` in the repo: 
 
     `mkdir Data Models`
 
-As the names suggest, `Data` will store the DFT datasets used to train the GNN in case you work in *training mode* (see below), while `Models` will contain the different GNN models that you will get from Zenodo if you choose to work in *inference mode* (see below), and the models you will generate if you work in Training mode otherwise.
+    As the names suggest, `Data` will store the DFT datasets used to train the GNN in case you work in *training mode* (see below), while `Models` will contain the different GNN models that you will get from Zenodo if you choose to work in *inference mode* (see below), and the models you will generate if you work in Training mode otherwise.
+
 Done! In theory now everything is set up to start playing with the GNN framework!  
 ## Usage
 
