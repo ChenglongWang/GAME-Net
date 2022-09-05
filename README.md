@@ -1,6 +1,6 @@
 # Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks
 
-<img src="/images/output/video1.gif" width="50%" height="50%"/>
+![](https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads/-/blob/master/GNN.gif)
 
 This is the repository of the work related to the article "Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks".
 ## Installation
