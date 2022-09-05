@@ -2,21 +2,23 @@
 
 # Framework installation
 
-1. Clone the repo from GitLab. Open a terminal from the desktop and use the following command:  
+1. Clone the repo from GitLab. Open a terminal and use the following command:  
 
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads.git`  
     
-You should have now a folder in the Desktop called ``gnn_eads``.  
-2. Create conda environment. Enter the repo: You should find a text file called `GNN_env.txt`. Choose a name for your new environment (e.g., `GNN` here) and use the following conda command:  
+You should have now a folder in the current directory called ``gnn_eads``.  
+
+2. Create a conda environment. Enter the repo: You should find a file called `GNN_env.txt`. It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for your new environment (we will use `GNN` here) and use the conda command:  
 
     `conda create --name GNN --file GNN_env.txt`  
     
-Check that you have created your new new conda envionment by typing `conda env list`: A list with all your environments should appear, together with the newly created `GNN`. Use `conda activate GNN` to activate it.  
-3. Install pyRDTP, a Python package used to build the base of the GNN framework. Clone the repo in the existing `gnn_eads` base directory:  
+Check that you have created your new environment by typing `conda env list`: A list with all your environments appear, together with the newly created `GNN`. Use `conda activate GNN` to activate it (you will see the name of the current active environment within parentheses on the left of the terminal).  
+
+3. Install pyRDTP, a Python package used to build the base of the GNN framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command):  
 
     `git clone --branch experimental https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
     
-A new folder `pyrdtp` should be present in your base repo. Now, with the `GNN` environment activated, install pyRDTP with pip:  
+A new folder `pyrdtp` should be now present in your base repo `gnn_eads`. With the `GNN` environment activated, use pip to install pyRDTP:  
 
     `pip install pyrdtp`  
     
