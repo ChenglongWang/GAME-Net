@@ -37,14 +37,14 @@ You have two possible choices for playing with the GNN framework:
 
 - **Training mode**: You will test the whole workflow we had to follow during the framework development. In this case, you will need the DFT datasets for training the GNN. Within this mode, you can train your own models with the preferred hyperparameter setting and model architecture, or, if you have enough computational resources, you can also perform hyperparameter tuning with the workflow based on Ray Tune.
 
-## Inference mode
+### Inference mode
 
 Within this mode, you can opt among two different options:
 
 1. You already have performed some DFT calculations and want to compare the performance of the GNN models with the ground truth provided by your DFT data. In this case, the main scripts and files you will work with are `GNNvsDFT.ipynb` and `GNNvsDFT.ipynb`
 
 2. You have no DFT calculations for a specific system and want to get a direct estimation from the pre-trained Graph Neural Networks. In this case, you will play mainly with `interactive_graph_creator.py`, a Python script that will help you build the graph related to your specific case, automatically providing the ground state energy of the system and the adjusted adsorption energy. 
-## Training mode
+### Training mode
 
 The DFT datasets and the models are stored in Zenodo (link). The DFT datasets are also uploaded on ioChem-BD (doi)
 Also here, two different ways to use the framework are available:
