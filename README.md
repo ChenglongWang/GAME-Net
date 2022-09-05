@@ -1,14 +1,14 @@
 # Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks
 
-# Framework installation
+# GNN Framework installation
 
 1. Clone the repo from GitLab. Open a terminal and use the following command:  
 
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads.git`  
     
-You should have now a folder in the current directory called ``gnn_eads``.  
+You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo: You should find a file called `GNN_env.txt`. It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for your new environment (we will use `GNN` here) and use the conda command:  
+2. Create a conda environment. Enter the repo: You should find a file called `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for your new environment (we will use `GNN` here) and use the conda command:  
 
     `conda create --name GNN --file GNN_env.txt`  
     
@@ -41,11 +41,16 @@ Within this mode, you can opt among two different options:
 2. You have no DFT calculations for a specific system and want to get a direct estimation from GNNs. In this case, you will play mainly with `interactive_graph_creator.py`, a Python script that will help you build the graph related to your specific case, automatically providing the ground state energy of the system and the adjusted adsorption energy. In order to get the final adsorption energy, just substract the energy of your metal slab. 
 ## Training mode
 
-The DFT datasets and the models are stored in Zenodo (link).
+The DFT datasets and the models are stored in Zenodo (link). The DFT datasets are also uploaded on ioChem-BD (doi)
 
 
 # Authors
 
 Santiago Morandi, Ph.D. Student, Lopez group at ICIQ (Spain)  
-Sergio Pablo Garcia Carrillo, Ph.D. Student at Lopez Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)  
+Sergio Pablo Garcia Carrillo, Ph.D. Student at Lopez Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
+
+
+# Contributors
+
+Zarko Ivkovic, B.Sc. Student, DFT dataset creation and interface testing.
 
