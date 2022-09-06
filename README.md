@@ -65,6 +65,7 @@ Within this mode as well, you can choose among two available ways to work with t
 
     `python train_GNN.py -o test -e 200 -b 16 -j mse`
 
+    To check the documentation of the script, type `python train_GNN.py -help`.
 2. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the model architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `long_night` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (each GPU partitioned in two), type:
 
     `python hypopt_GNN.py -o long_night -s 2000 -gr 15 -gpt 0.5`
@@ -72,16 +73,15 @@ Within this mode as well, you can choose among two available ways to work with t
 
 # Authors
 
-Santiago Morandi, Ph.D. Student, Lopez group at ICIQ (Spain)  
-Sergio Pablo Garcia Carrillo, Ph.D. Student at Lopez Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
+Santiago Morandi, Ph.D. Student, López group at ICIQ (Spain)  
+Sergio Pablo-García, Ph.D. Student, López Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
 # Contributors
 
-Zarko Ivkovic, B.Sc. Student, DFT dataset creation and interface testing.
+Zarko Ivkovic, M.Sc. Student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of the DFT dataset and interface testing.
 
 # License
 
-MIT
-
+[MIT License](https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads/-/blob/master/LICENSE)
 # Support 
 
 In case you need help or are interested in contributing, feel free to contact us sending an e-mail to smorandi@iciq.es
