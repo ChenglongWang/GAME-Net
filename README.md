@@ -6,7 +6,7 @@
 
 This is the official repository of the framework related to the article "Adsorption Energy of Any Molecule on Metals Using Graph Neural Networks". The Graph Neural Networks (GNNs) developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
-- All Gas-phase closed-shell molecules containing C, H, O, N and S.
+- All gas-phase closed-shell molecules containing C, H, O, N and S.
 - Adsorption systems: Same molecules mentioned above on the following 14 metals: Ag, Au, Cd, Co, Cu, Fe, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built on top of [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/index.html).
@@ -43,7 +43,7 @@ Done! In theory now everything is set up to start playing with the GNN framework
 
 You have two possible choices for interacting with the GNN framework:
 
-- **Inference mode**: Most likely, you are a curious person and want to probe the performance of the GNN models compared to your DFT simulations. In this case, you will test the pre-trained models proposed by us without going deeper in the details behind the models' generation process and without accessing the DFT data used to train them. 
+- **Inference mode**: Most likely, you are a curious person and want to probe the performance of the GNN models compared to your DFT simulations. In this case, you will test the pre-trained models developed by us, without going deeper in the details behind the models' generation process and without accessing the DFT data used to train them. 
 
 - **Training mode**: You will go through all the steps defined in the workflow for the GNN model generation process. In this case you will need the DFT datasets for training the GNN. Within this mode, you can train your own models with the preferred hyperparameter setting and model architecture, or, if you have enough computational resources, you can perform hyperparameter tuning with the workflow based on [Ray Tune](https://docs.ray.io/en/latest/tune/index.html).
 
