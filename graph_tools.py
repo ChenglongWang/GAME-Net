@@ -49,7 +49,6 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     Returns:
         new_g(torch_geometric.data.Data): torch_geometric graph object        
     """
-    pass
 
 def plotter(graph,
             node_size: int=400,

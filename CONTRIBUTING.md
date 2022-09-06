@@ -20,9 +20,10 @@ The structure of the repo is still work in progress, all the Python scripts, mod
 - `constants.py`: Stores the global constants of the GNN framework.
 - `functions.py`: General container of functions for data conversion, splitting, target scaling, etc.
 - `nets.py`: Contains Graph Neural Network architectures base classes.
-- `graph_tools.py`: Functions for manipulating graphs in `torch_geometric.data.Data` format.
-- `graph_filters.py`: Filters for graphs in `torch_geometric.data.Data` format.
+- `graph_tools.py`: Functions for manipulation of `torch_geometric.data.Data` graph objects.
+- `graph_filters.py`: Filters for `torch_geometric.data.Data` graph objects.
 - `classes.py`: Contains the Dataset class suitable for PyTorch Geometric.
+- `paths.py`: Paths to the DFT datasets folders.
 - `post_training.py`: Collecting information of the learning processes and create reports.
 - `plot_functions.py`: Data visualization purposes.
 

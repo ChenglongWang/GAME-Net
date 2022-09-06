@@ -5,12 +5,13 @@ These filters are applied before the inclusion of the graphs in the HetGraphData
 from constants import ENCODER, METALS, ELEMENT_LIST, NODE_FEATURES
 import torch
 from torch_geometric.utils import to_networkx
+import numpy as np
 import networkx as nx
 from torch_geometric.data import Data
-from graph_tools import *
+from graph_tools import extract_adsorbate, convert_gpytorch_to_networkx
 from functions import get_graph_formula
 
-def single_fragment_filter(graph: torch_geometric.data.Data):
+def single_fragment_filter(graph: Data):
     """
     Graph filter function that checks that there is just one adsorbate on the original system.
     Args: 
@@ -68,7 +69,7 @@ def single_fragment_filter(graph: torch_geometric.data.Data):
     else:  # graph with one node and zero edges
         return True
 
-def H_connectivity_filter(graph: torch_geometric.data.Data):
+def H_connectivity_filter(graph: Data):
     """
     Graph filter function that checks the connectivity of H atoms in the adsorbate is correct.
     Each H atoms must be connected to maximum one atom among C, H, O, N, S in the molecule.
@@ -102,7 +103,7 @@ def H_connectivity_filter(graph: torch_geometric.data.Data):
     else:
         return True
 
-def C_connectivity_filter(graph: torch_geometric.data.Data):
+def C_connectivity_filter(graph: Data):
     """
     Graph filter function that checks that each carbon atom in the molecule
     has at maximum 4 bonds.
@@ -136,7 +137,7 @@ def C_connectivity_filter(graph: torch_geometric.data.Data):
     else:
         return True
 
-def global_filter(graph: torch_geometric.data.Data):
+def global_filter(graph: Data):
     """
     Filter function sum of single_fragment and H_connectivity.
     Args: 
@@ -150,7 +151,7 @@ def global_filter(graph: torch_geometric.data.Data):
     condition3 = C_connectivity_filter(graph)
     return (condition1 and condition2) and condition3
 
-def is_chiral(graph: torch_geometric.data.Data):
+def is_chiral(graph: Data):
     """Filter for chiral molecules (OR STEREOISOMERS?)
 
     Args:
@@ -189,7 +190,7 @@ def is_chiral(graph: torch_geometric.data.Data):
         
     return None
 
-def explode_graph(graph: torch_geometric.data.Data, removed_node: int):
+def explode_graph(graph: Data, removed_node: int):
     """Explode graph into fragments keeping out the selected node
 
     Args:
@@ -236,7 +237,7 @@ def explode_graph(graph: torch_geometric.data.Data, removed_node: int):
     for j in range(2):
         for k in range(edge.shape[1]):
             edge[j, k] = (ff(int(edge_list[k][j].item())))
-    exploded_graph = torch_geometric.data.Data(x, edge)
+    exploded_graph = Data(x, edge)
     return exploded_graph
 
 def isomorphism_test(graph: Data, graph_list: list, eps: float=0.05) -> bool:

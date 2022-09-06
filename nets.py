@@ -3,8 +3,7 @@
 __author__ = "Santiago Morandi"
 
 import torch
-from torch.nn import Linear, GRU, Sequential
-import torch_geometric 
+from torch.nn import Linear, GRU 
 from torch_geometric.nn import Set2Set, CGConv, Set2Set, SAGEConv, GraphMultisetTransformer
 import torch.nn.functional as F
 
