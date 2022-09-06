@@ -37,6 +37,10 @@ The framework is built on top of [PyTorch](https://pytorch.org/) and [PyTorch Ge
 
     As the names suggest, `Data` will store the DFT datasets used to train the GNNs in case you will work in *training mode* (see below), while `Models` will contain the different GNN models stored in [Zenodo](https://www.zenodo.org/) if you choose to work in *inference mode* (see below), or the models you will create if you work in training mode otherwise. `Hyperparameter_Optimization` will store the results of the tuning process.
 
+5. Download the DFT training data from Zenodo: The FG-dataset must be stored in the folder `Data`.
+
+6. Download the GNN models from Zenodo: They must be stored in the folder `Models`.
+
 Done! In theory now everything is set up to start playing with the GNN framework!
 
 ## Usage
