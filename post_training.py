@@ -38,7 +38,7 @@ def create_model_report(model_name: str,
         hyperparams (dict): Dictionary with the hyperparameters of the learning process
         mae_lists (tuple[list]): MAE of the train/val/test sets wrt epoch
     """
-    # Report day and time of the run
+    # Time of the run
     today = date.today()
     today_str = str(today.strftime("%d-%b-%Y"))
     time = str(datetime.now())[11:]
@@ -57,7 +57,6 @@ def create_model_report(model_name: str,
     else:
         pass
     
-    # Unfold lists of MAE vs epoch
     train_list = mae_lists[0]
     val_list = mae_lists[1]
     test_list = mae_lists[2]
@@ -66,7 +65,7 @@ def create_model_report(model_name: str,
     try:
         os.mkdir("./Models/{}".format(model_name))
     except FileExistsError:
-        model_name = input("The name provided already exists: Provide a new one: ")
+        model_name = input("The name defined already exists: Provide a new one: ")
         os.mkdir("./Models/{}".format(model_name))
     os.mkdir("./Models/{}/Outliers".format(model_name))
     
