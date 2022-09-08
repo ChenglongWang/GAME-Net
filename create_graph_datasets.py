@@ -6,19 +6,22 @@ from paths import paths
 from constants import FG_RAW_GROUPS, GRAPH_REP_PARAMS
 from functions import get_tuples, export_tuples, geometry_to_graph_analysis
 
-def create_graph_datasets():
+def create_graph_datasets(voronoi_tolerance: float,
+                          second_order_nn: bool, 
+                          sfI: float, 
+                          sfII: float):
     bad_samples = 0
     tot_samples = 0
     print("DFT -> Graph conversion")
-    print("Voronoi tolerance = {} Angstrom".format(GRAPH_REP_PARAMS["Voronoi_tolerance"]))
-    print("2nd order metal neighbours inclusion = {}".format(GRAPH_REP_PARAMS["Second_order_nn"]))
-    print("Scaling factor I = {}".format(GRAPH_REP_PARAMS["Scaling_factor_I"]))
-    print("Scaling factor II = {}".format(GRAPH_REP_PARAMS["Scaling_factor_II"]))
+    print("Voronoi tolerance = {} Angstrom".format(voronoi_tolerance))
+    print("2nd order metal neighbours inclusion = {}".format(second_order_nn))
+    print("Scaling factor I = {}".format(sfI))
+    print("Scaling factor II = {}".format(sfII))
     for dataset in FG_RAW_GROUPS:
         tuple = get_tuples(dataset,
-                           GRAPH_REP_PARAMS["Voronoi_tolerance"],
+                           voronoi_tolerance,
                            GRAPH_REP_PARAMS["Atomic_radii"], 
-                           GRAPH_REP_PARAMS["Second_order_nn"])
+                           second_order_nn)
         export_tuples(paths[dataset]['dataset'], tuple)
         x = geometry_to_graph_analysis(dataset)
         if dataset[:3] != "gas":

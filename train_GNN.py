@@ -10,11 +10,13 @@ import torch
 import torch_geometric
 from torch.nn.functional import l1_loss, mse_loss, huber_loss
 from torch_geometric.nn import SAGEConv, GATv2Conv, GraphMultisetTransformer
+import toml
 
 from functions import create_loaders, scale_target, train_loop, test_loop
 from processed_datasets import FG_dataset
 from nets import FlexibleNet
 from post_training import create_model_report
+from create_graph_datasets import create_graph_datasets
 
 # Possible hyperparameters for loss function, convolutional layer and GMT pool sequence
 loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
@@ -66,6 +68,8 @@ if __name__ == "__main__":
     PARSER.add_argument("-bias", default=True, type=bool, dest="bias", help="Whether allowing bias in all the GNN layers.")
     
     ARGS = PARSER.parse_args()
+    
+    config = toml.load("config.toml")
     
     LOSS_FUNCTION = loss_dict[ARGS.loss]    
     OUTPUT_NAME = ARGS.o
@@ -155,10 +159,10 @@ if __name__ == "__main__":
                                                               min_lr=HYPERPARAMS["minlr"])
     
     # Run the learning process    
-    loss_list = []  # Store loss function trend during training
-    train_list = [] # Store training MAE during training
-    val_list = []   # Store validation MAE during training
-    test_list = []  # Store test MAE during training
+    loss_list = []  # Loss function during training
+    train_list = [] # Training MAE during training
+    val_list = []   # Validation MAE during training
+    test_list = []  # Test MAE during training
      
     t0 = time.time()
     for epoch in range(1, HYPERPARAMS["epochs"]+1):
@@ -185,11 +189,6 @@ if __name__ == "__main__":
         loss_list.append(loss)
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
-        
-        # fig, ax = E_violinplot_train(model, test_loader, std_tv, set(FG_FAMILIES), epoch)
-        # plt.savefig("./gif/violin_{}.png".format(epoch), dpi=200, bbox_inches='tight')
-        # fig, ax = DFTvsGNN_plot_train(model, test_loader, mean_tv, std_tv, epoch)
-        # plt.savefig("./gif/parity_{}.png".format(epoch), dpi=200, bbox_inches='tight')
     print("-----------------------------------------------------------------------------------------")
     print("Training time: {:.2f} s".format(time.time() - t0))
     print("Device: {}".format(torch.cuda.get_device_name(0)))

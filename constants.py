@@ -2,16 +2,7 @@
 
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
-from pathlib import Path
 
-# Path of the Data directory
-ROOT = Path('/home/santiago/Desktop/GNN/Data')
-
-# Parameters for the graph representation algorithm
-VORONOI_TOLERANCE = 0.25     # Tolerance for the connectivity search
-SCALING_FACTOR = 1.2         # Scaling factor for Cu Ir Ni Os Pd Pt Rh Ru (1.2 original)
-SCALING_FACTOR_II = 1.5      # Scaling factor for Ag Au Cd Zn             (1.5 original)
-SECOND_ORDER_NN = False       # Whether considering metal 2nd order neighbours of the adsorbate
 CORDERO_ORIGINAL = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
            'As': 1.19, 'At': 1.50, 'Ba': 2.15, 'Be': 0.96, 'Bi': 1.48,
            'B' : 0.84, 'Br': 1.20, 'Cd': 1.44, 'Ca': 1.76, 'C' : 0.76,
