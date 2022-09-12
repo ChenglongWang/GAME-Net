@@ -90,3 +90,8 @@ Zarko Ivkovic, M.Sc. Student, University of Barcelona, ICIQ Summer Fellow 2022; 
 
 In case you need help or are interested in contributing, feel free to contact us sending an e-mail to smorandi@iciq.es
 
+# Acknowledgements
+
+<p align="center">
+    <img src="./ack_repo.png"/>
+</p>

@@ -4,7 +4,7 @@
 
 /*.svg
 /*.png
-
+!ack_repo.png
 Images/
 Manuscript/
 __pycache__/
