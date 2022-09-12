@@ -3,6 +3,8 @@
 from torch_geometric.data import InMemoryDataset, Data
 import torch
 import numpy as np
+import toml
+
 from constants import ENCODER, FAMILY_DICT, METALS
 from graph_filters import global_filter, isomorphism_test
 from graph_tools import plotter
@@ -24,21 +26,25 @@ class HetGraphDataset(InMemoryDataset):
         super(HetGraphDataset, self).__init__(root, transform, pre_transform, pre_filter)
         self.root = root
         self.data, self.slices = torch.load(self.processed_paths[0])
+        self.graph_rep = toml.load("config.toml")["Graph_params"]
+        self.id = str(self.graph_rep["voronoi_tol"]) + "_" + \
+                  str(self.graph_rep["scaling_factor"]) + "_" + \
+                  str(self.graph_rep["second_order_nn"]) + ".dat"       
 
     @property
     def raw_file_names(self):  # Raw dataset directory (plain text file from which graphs are generated)
         return self.root / 'Dataset.dat'  
     @property
     def processed_file_names(self):  # Processed dataset directory 
-        return self.root / 'Last_day_summer.dat' 
+        return self.root / self.id 
 
     def download(self):
         pass
 
     def process(self):  
         """
-        If Dataset_pp.dat is not found in the directory, the
-        class launches this method to process the raw data.
+        If the path provided in processed_file_names() is not existing, the
+        class automatically runs this method to process the raw data.
         NB: This method is run everytime the path given in processed_file_names
         is not present. Thus, if you want to regenerate the samples, you have to change the name 
         provided there (likely there is a more efficient way to regenerate the dataset).

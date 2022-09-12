@@ -1,10 +1,12 @@
-"""Script for launching a GNN model training."""
+"""Launch GNN model training."""
 
 __author__ = "Santiago Morandi"
 
 import argparse
+from genericpath import isdir
 import sys
 import time
+import os
 
 import torch 
 import torch_geometric
@@ -20,15 +22,13 @@ from create_graph_datasets import create_graph_datasets
 
 # Possible hyperparameters for loss function, convolutional layer and GMT pool sequence
 loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
-pool_seq_dict = {"1": ["GMPool_I"],
-                 "2": ["GMPool_G"],
-                 "3": ["GMPool_G", "GMPool_I"],
-                 "4": ["GMPool_G", "SelfAtt", "GMPool_I"], 
+pool_seq_dict = {"1": ["GMPool_I"], "2": ["GMPool_G"],
+                 "3": ["GMPool_G", "GMPool_I"], "4": ["GMPool_G", "SelfAtt", "GMPool_I"], 
                  "5": ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]}
 conv_layer = {"SAGE": SAGEConv, "GATv2": GATv2Conv}
 
 if __name__ == "__main__":
-    PARSER = argparse.ArgumentParser(description="Perform a single training process with the selected hyperparameter setting.")
+    PARSER = argparse.ArgumentParser(description="Perform a training process with the selected hyperparameter setting.")
     PARSER.add_argument("-o", "--output", type=str, dest="o", 
                         help="Name of the directory where results will be stored.")
     PARSER.add_argument("-d", "--dimension", default=128, type=int, dest="d",
@@ -69,7 +69,8 @@ if __name__ == "__main__":
     
     ARGS = PARSER.parse_args()
     
-    config = toml.load("config.toml")
+    config = toml.load("config.toml")["Data_params"]  
+    root = toml.load("config.toml")["Data"]["root"]    
     
     LOSS_FUNCTION = loss_dict[ARGS.loss]    
     OUTPUT_NAME = ARGS.o
@@ -84,9 +85,6 @@ if __name__ == "__main__":
         print("CudaDNN enabled: {}".format(torch.backends.cudnn.enabled)) 
         print("CUDA Version: {}".format(torch.version.cuda))
         print("CuDNN Version: {}".format(torch.backends.cudnn.version()))
-    print("Python version: {}".format(sys.version[:7]))
-    print("Pytorch version: {}".format(torch.__version__))
-    print("Pytorch Geometric version: {}".format(torch_geometric.__version__))
     
     HYPERPARAMS = {}
     # Process-related
@@ -120,6 +118,17 @@ if __name__ == "__main__":
     HYPERPARAMS["pool_seq"] = POOL_SEQ
     HYPERPARAMS["pool_layer_norm"] = ARGS.pool_layer_norm
  
+    # Convert raw DFT data to graph representation
+    processed_data_path = str(config["voronoi_tol"]) + "_" + \
+                  str(config["second_order_nn"]) + "_" + \
+                  str(config["scaling_factor"]) + ".dat"  
+    if os.isdir(root + processed_data_path):
+        pass
+    else:
+        bad, tot = create_graph_datasets(config['voronoi_tol'], 
+                                         config['second_order_nn'], 
+                                         config['scaling_factor'])
+    
     # Create train, validation and test sets Dataloaders  
     train_loader, val_loader, test_loader = create_loaders(FG_dataset,
                                                            batch_size=HYPERPARAMS["batch_size"],
@@ -193,7 +202,8 @@ if __name__ == "__main__":
     print("Training time: {:.2f} s".format(time.time() - t0))
     print("Device: {}".format(torch.cuda.get_device_name(0)))
 
-    create_model_report(OUTPUT_NAME, 
+    create_model_report(OUTPUT_NAME,
+                        config,  
                         model, 
                         (train_loader, val_loader, test_loader),
                         (mean, std),

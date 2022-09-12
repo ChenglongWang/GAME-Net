@@ -21,6 +21,7 @@ from graph_tools import plotter
 from plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
 
 def create_model_report(model_name: str,
+                        configuration_dict: dict,
                         model,
                         loaders: tuple[DataLoader],                     
                         scaling_params : tuple[float], 
@@ -49,6 +50,11 @@ def create_model_report(model_name: str,
     train_loader = loaders[0]
     val_loader = loaders[1]
     test_loader = loaders[2]
+    
+    # Extract Config params
+    voronoi_tol = configuration_dict["voronoi_tol"]
+    second_order = configuration_dict["second_order_nn"]
+    scaling_factor = configuration_dict["scaling_factor"]
     
     # Scaling parameters
     if hyperparams["target_scaling"] == "std":
@@ -97,6 +103,10 @@ def create_model_report(model_name: str,
         N_tot = N_train + N_val
         # Performance Report
         file1 = open("./Models/{}/performance.txt".format(model_name), "w")
+        file1.write("Graph Representation Parameters\n")
+        file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
+        file1.write("Atomic radii scaling factor = {}\n".format(scaling_factor))
+        file1.write("Second order metal neighbours inclusion = {}\n".format(second_order))
         file1.write("Training Process\n")
         file1.write(run_period)
         file1.write("Dataset Size = {}\n".format(N_tot))
@@ -188,6 +198,10 @@ def create_model_report(model_name: str,
     plt.close()
     # Performance Report
     file1 = open("./Models/{}/performance.txt".format(model_name), "w")
+    file1.write("Graph Representation Parameters\n")
+    file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
+    file1.write("Atomic radii scaling factor = {}\n".format(scaling_factor))
+    file1.write("Second order metal neighbours inclusion = {}\n".format(second_order))
     file1.write("Learning Process\n")
     file1.write(run_period)
     file1.write("Dataset Size = {}\n".format(N_tot))

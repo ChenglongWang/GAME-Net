@@ -2,7 +2,9 @@
 NB: datasets with initial capital letter have different structures than the others."""
 
 from pathlib import Path
-from constants import ROOT
+import toml
+
+ROOT = toml.load("config.toml")["Data"]["root"]
 
 paths = {'Intermediates': {'root': ROOT / Path('Intermediates'),
                            'geom': ROOT / Path('Intermediates/structures'),

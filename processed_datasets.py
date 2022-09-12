@@ -3,8 +3,6 @@ from paths import paths
 from torch import load
 from torch_geometric.loader import DataLoader
 
-#Intermediates_dataset = HetGraphDataset(paths['Intermediates']['root'])
-#RPCA_dataset = HetGraphDataset(paths['RPCA']['root'])
 aromatics_dataset = HetGraphDataset(paths['aromatics']['root'])
 group2_dataset = HetGraphDataset(paths['group2']['root'])
 group2b_dataset = HetGraphDataset(paths['group2b']['root'])

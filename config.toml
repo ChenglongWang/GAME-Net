@@ -1,17 +1,12 @@
 title = "GNN config file"
 author = "Santiago Morandi"
 
-[Graph_params]
-
-# Parameters for converting the DFT raw data to the respective graph representations
+[Graph_params]  # Parameters for graph representation
 
 voronoi_tol = 0.25
-scaling_factorI = 1.5
-scaling_factorII = 1.2
+scaling_factor = 1.5
 second_order_nn = true
 
-[Data]
-
-# Path where data are present
+[Data]  # Path to folder "Data" containing DFT raw data
 
 root = "/home/santiago/Desktop/GNN/Data"

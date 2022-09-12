@@ -19,7 +19,7 @@ import numpy as np
 from scipy.spatial import Voronoi
 from pymatgen.io.vasp import Outcar
  
-from constants import METALS, MOL_ELEM, FG_RAW_GROUPS, VORONOI_TOLERANCE, CORDERO,  ENCODER
+from constants import CORDERO, METALS, MOL_ELEM, FG_RAW_GROUPS, ENCODER
 
 def split_percentage(splits: int, test: bool=True) -> tuple[int]:
     """Return split percentage of the train, validation and test sets.
@@ -38,9 +38,9 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
         return int((1 - 1/splits) * 100), math.ceil(100 / splits)
 
 def mol_to_ensemble(molecule: Molecule,
-                    voronoi_tolerance: float=VORONOI_TOLERANCE,
-                    atom_rad_dict: dict=CORDERO, 
-                    second_order: bool=False) -> Molecule:
+                    voronoi_tolerance: float,
+                    atom_rad_dict: dict, 
+                    second_order: bool) -> Molecule:
     """
     Extract adsorbate + interacting metal atoms from the whole cell.
     Function based on pyRDTP.
@@ -117,7 +117,7 @@ def mol_to_ensemble_CAVITY(molecule: Molecule,
     return new_molecule
 
 def ensemble_to_graph(molecule: Molecule, 
-                      second_order: bool=False) -> nx.Graph:
+                      second_order: bool) -> nx.Graph:
     """
     Convert pyRDTP Molecule to NetworkX graph.
     If second order neighbours are included, the metal-metal connnectons are kept.
@@ -482,7 +482,8 @@ def scale_target(train_loader: DataLoader,
         return train_loader, val_loader, test_loader, 0, 1
 
 def connectivity_search_voronoi(molecule: Molecule,
-                                tolerance:float=VORONOI_TOLERANCE,
+                                tolerance:float,
+                                scaling_factor: float,
                                 metal_rad_dict:dict=CORDERO,
                                 center:bool=False) -> Molecule:
     """
@@ -645,10 +646,10 @@ def get_mean_std_from_model(model_path:str) -> tuple[float]:
     return mean, std
 
 def contcar_to_graph(contcar_file: str,
-                     voronoi_tolerance: float=VORONOI_TOLERANCE,
-                     atomic_radius_dict: dict=CORDERO, 
-                     one_hot_encoder=ENCODER, 
-                     second_order: bool=False) -> Data:
+                     voronoi_tolerance: float,
+                     atomic_radius_dict: dict,
+                     second_order: bool, 
+                     one_hot_encoder=ENCODER) -> Data:
     """Create graph representation from VASP CONTCAR file
 
     Args:
@@ -673,43 +674,15 @@ def contcar_to_graph(contcar_file: str,
     graph = Data(x=x, edge_index=edge_index)
     return graph
 
-def contcar_to_graph_CAVITY(contcar_file: str,
-                            voronoi_tolerance: float=VORONOI_TOLERANCE,
-                            atomic_radius_dict: dict=CORDERO, 
-                            one_hot_encoder=ENCODER) -> Data:
-    """Create graph representation from VASP CONTCAR file
-
-    Args:
-        contcar_file (str): Path to CONTCAR file.
-        voronoi_tolerance (float, optional): Tolerance applied during the graph conversion.
-        atomic_radius_dict (dict, optional): Atomic radius dictionary. Defaults to CORDERO.
-        one_hot_encoder (_type_, optional): One-hot encoder. Defaults to encoder.
-
-    Returns:
-        graph (torch_geometric.data.Data): Graph object representing the system under study.
-    """
-    mol = file_to_mol(contcar_file, 'contcar', bulk=False)
-    mol = mol_to_ensemble_CAVITY(mol, voronoi_tolerance, atomic_radius_dict)
-    nx_graph = ensemble_to_graph(mol)
-    elem = list(nx_graph[1][0])
-    source = list(nx_graph[1][1][0])
-    target = list(nx_graph[1][1][1])
-    elem_array = np.array(elem).reshape(-1, 1)
-    elem_enc = one_hot_encoder.transform(elem_array).toarray()
-    edge_index = torch.tensor([source, target], dtype=torch.long)
-    x = torch.tensor(elem_enc, dtype=torch.float)
-    graph = Data(x=x, edge_index=edge_index)
-    return graph
-
 def get_graph_sample(system: str, 
-                     surface: str= None,
-                     voronoi_tolerance: float=VORONOI_TOLERANCE, 
-                     atomic_radius_dict: dict=CORDERO, 
+                     surface: str,
+                     voronoi_tolerance: float, 
+                     atomic_radius_dict: dict, 
+                     second_order: bool,
                      encoder: OneHotEncoder=ENCODER,
                      gas_mol: bool=False,
                      family: str=None, 
-                     surf_multiplier: int=None, 
-                     second_order: bool=False) -> Data:
+                     surf_multiplier: int=None) -> Data:
     """ 
     Generate labelled graph samples from VASP files.
     
@@ -739,20 +712,4 @@ def get_graph_sample(system: str,
     if family is not None:
         graph.family = family
     return graph
-
-def load_model(path: str):
-    """Load pre-trained GNN model
-
-    Args:
-        path (str): Directory containing the model. It must contain:
-                    1) performance.txt file to extract mean and std
-                    2) model.pth GNN architecture
-                    3) GNN.pth GNN model parameters
-    """
-    model = torch.load("{}/model.pth".format(path))
-    model.load_state_dict(torch.load("{}GNN.pth".format(path)))
-    model.eval()
-    model.to("cpu")
-    mean, std = get_mean_std_from_model(path)
-    return model, mean, std
     

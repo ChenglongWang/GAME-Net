@@ -8,15 +8,24 @@ from functions import get_tuples, export_tuples, geometry_to_graph_analysis
 
 def create_graph_datasets(voronoi_tolerance: float,
                           second_order_nn: bool, 
-                          sfI: float, 
-                          sfII: float):
+                          scaling_factor: float):
+    """Convert raw DFT data into graph representation that will be saved in a txt file
+
+    Args:
+        voronoi_tolerance (float): Tolerance applied in the tessellation algorithm for edge definition
+        second_order_nn (bool): Whether to include the 2-hop metal atoms neighbours 
+        sfI (float): _description_
+        sfII (float): _description_
+
+    Returns:
+        _type_: _description_
+    """
     bad_samples = 0
     tot_samples = 0
     print("DFT -> Graph conversion")
     print("Voronoi tolerance = {} Angstrom".format(voronoi_tolerance))
     print("2nd order metal neighbours inclusion = {}".format(second_order_nn))
-    print("Scaling factor I = {}".format(sfI))
-    print("Scaling factor II = {}".format(sfII))
+    print("Scaling factor I = {}".format(scaling_factor))
     for dataset in FG_RAW_GROUPS:
         tuple = get_tuples(dataset,
                            voronoi_tolerance,
