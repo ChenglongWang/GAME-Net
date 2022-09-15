@@ -15,17 +15,18 @@ from sklearn.metrics import r2_score
 import torch.nn.functional as F
 from torchinfo import summary
 
-from constants import ENCODER, FG_FAMILIES, DPI
+from constants import ENCODER, FG_FAMILIES
 from functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from graph_tools import plotter
 from plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
+
+DPI = 500
 
 def create_model_report(model_name: str,
                         configuration_dict: dict,
                         model,
                         loaders: tuple[DataLoader],                     
                         scaling_params : tuple[float], 
-                        hyperparams: dict,
                         mae_lists: tuple[list], 
                         device: dict=None):
     """
@@ -51,13 +52,18 @@ def create_model_report(model_name: str,
     val_loader = loaders[1]
     test_loader = loaders[2]
     
+    # Unfold config dict
+    graph = configuration_dict["graph"]
+    train = configuration_dict["train"]
+    architecture = configuration_dict["architecture"]
+    
     # Extract Config params
-    voronoi_tol = configuration_dict["voronoi_tol"]
-    second_order = configuration_dict["second_order_nn"]
-    scaling_factor = configuration_dict["scaling_factor"]
+    voronoi_tol = graph["voronoi_tol"]
+    second_order_nn = graph["second_order_nn"]
+    scaling_factor = graph["scaling_factor"]
     
     # Scaling parameters
-    if hyperparams["target_scaling"] == "std":
+    if train["target_scaling"] == "std":
         mean_tv = scaling_params[0]
         std_tv = scaling_params[1]
     else:
@@ -77,7 +83,7 @@ def create_model_report(model_name: str,
     
     # Store info about GNN architecture 
     with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
-        print(summary(model, batch_dim=hyperparams["batch_size"], verbose=2), file=f)
+        print(summary(model, batch_dim=train["batch_size"], verbose=2), file=f)
     
     # Save GNN model object and parameters
     torch.save(model, "./Models/{}/model.pth".format(model_name)) 
@@ -87,41 +93,33 @@ def create_model_report(model_name: str,
     if device != None:
         with open('./Models/{}/device.txt'.format(model_name), 'w') as f:
             print(device, file=f)
-        
-    if hyperparams["loss_function"] == F.l1_loss:
-        loss = "MAE"
-    elif hyperparams["loss_function"] == F.mse_loss:
-        loss = "MSE"
-    elif hyperparams["loss_function"] == F.huber_loss:
-        loss = "Huber"
-    else:
-        loss = "None"
+    
+    loss = train["loss_function"] 
         
     N_train = len(train_loader.dataset)
     N_val = len(val_loader.dataset)
-    if hyperparams["test_set"] == False: 
+    if train["test_set"] == False: 
         N_tot = N_train + N_val
-        # Performance Report
         file1 = open("./Models/{}/performance.txt".format(model_name), "w")
-        file1.write("Graph Representation Parameters\n")
+        file1.write("GRAPH REPRESENTATION PARAMETERS\n")
         file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
         file1.write("Atomic radii scaling factor = {}\n".format(scaling_factor))
-        file1.write("Second order metal neighbours inclusion = {}\n".format(second_order))
-        file1.write("Training Process\n")
+        file1.write("Second order metal neighbours inclusion = {}\n".format(second_order_nn))
+        file1.write("TRAINING PROCESS\n")
         file1.write(run_period)
         file1.write("Dataset Size = {}\n".format(N_tot))
-        file1.write("Data Split (Train/Val) = {}-{} %\n".format(*split_percentage(hyperparams["splits"], hyperparams["test_set"])))
-        file1.write("Target scaling = {}\n".format(hyperparams["target_scaling"]))
+        file1.write("Data Split (Train/Val) = {}-{} %\n".format(*split_percentage(train["splits"], train["test_set"])))
+        file1.write("Target scaling = {}\n".format(train["target_scaling"]))
         file1.write("Dataset (train+val) mean = {:.6f} eV\n".format(scaling_params[0]))
         file1.write("Dataset (train+val) standard deviation = {:.6f} eV\n".format(scaling_params[1]))
-        file1.write("Epochs = {}\n".format(hyperparams["epochs"]))
-        file1.write("Batch Size = {}\n".format(hyperparams["batch_size"]))
+        file1.write("Epochs = {}\n".format(train["epochs"]))
+        file1.write("Batch Size = {}\n".format(train["batch_size"]))
         file1.write("Optimizer = Adam\n")                                            # Kept fixed in this project
         file1.write("Learning Rate scheduler = Reduce Loss On Plateau\n")            # Kept fixed in this project
-        file1.write("Initial Learning Rate = {}\n".format(hyperparams["lr0"]))
-        file1.write("Minimum Learning Rate = {}\n".format(hyperparams["minlr"]))
-        file1.write("Patience (lr-scheduler) = {}\n".format(hyperparams["patience"]))
-        file1.write("Factor (lr-scheduler) = {}\n".format(hyperparams["factor"]))
+        file1.write("Initial Learning Rate = {}\n".format(train["lr0"]))
+        file1.write("Minimum Learning Rate = {}\n".format(train["minlr"]))
+        file1.write("Patience (lr-scheduler) = {}\n".format(train["patience"]))
+        file1.write("Factor (lr-scheduler) = {}\n".format(train["factor"]))
         file1.write("Loss function = {}\n".format(loss))
         file1.close() 
         return None 
@@ -171,12 +169,12 @@ def create_model_report(model_name: str,
         plt.savefig("./Models/{}/parity_plot_{}.svg".format(model_name, key), bbox_inches='tight')
         plt.close()
     # Parity plot (GNN vs DFT) for train+val+test together
-    fig, ax1, ax2, ax3 = pred_real(model, train_loader, val_loader, test_loader, hyperparams["splits"], mean_tv, std_tv)
+    fig, ax1, ax2, ax3 = pred_real(model, train_loader, val_loader, test_loader, train["splits"], mean_tv, std_tv)
     plt.tight_layout()
     plt.savefig("./Models/{}/parity_plot.svg".format(model_name), bbox_inches='tight')
     plt.close()
     # Learning process: MAE vs epoch
-    fig, ax = training_plot(train_list, val_list, test_list, hyperparams["splits"])
+    fig, ax = training_plot(train_list, val_list, test_list, train["splits"])
     plt.savefig("./Models/{}/learning_curve.svg".format(model_name), bbox_inches='tight')
     plt.close()
     # Error analysis
@@ -198,28 +196,43 @@ def create_model_report(model_name: str,
     plt.close()
     # Performance Report
     file1 = open("./Models/{}/performance.txt".format(model_name), "w")
-    file1.write("Graph Representation Parameters\n")
-    file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
-    file1.write("Atomic radii scaling factor = {}\n".format(scaling_factor))
-    file1.write("Second order metal neighbours inclusion = {}\n".format(second_order))
-    file1.write("Learning Process\n")
     file1.write(run_period)
+    if device is not None:
+        file1.write("Device = {}\n".format(device["name"]))
+        file1.write("Training time = {:.2f} min\n".format(device["training_time"]))
+    file1.write("---------------------------------------------------------\n")
+    file1.write("GRAPH REPRESENTATION PARAMETERS\n")
+    file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
+    file1.write("Atomic radius scaling factor = {}\n".format(scaling_factor))
+    file1.write("Second order metal neighbours inclusion = {}\n".format(second_order_nn))
+    file1.write("---------------------------------------------------------\n")
+    file1.write("GNN ARCHITECTURE\n")
+    file1.write("Activation function = {}\n".format(architecture["sigma"]))
+    file1.write("Convolutional layer = {}\n".format(architecture["conv_layer"]))
+    file1.write("Pooling layer = {}\n".format(architecture["pool_layer"]))
+    file1.write("Number of convolutional layers = {}\n".format(architecture["n_conv"]))
+    file1.write("Number of fully connected layers = {}\n".format(architecture["n_linear"]))
+    file1.write("Depth of the layers = {}\n".format(architecture["dim"]))
+    file1.write("Bias presence in the layers = {}\n".format(architecture["bias"]))
+    file1.write("---------------------------------------------------------\n")
+    file1.write("TRAINING PROCESS\n")
     file1.write("Dataset Size = {}\n".format(N_tot))
-    file1.write("Data Split (Train/Val/Test) = {}-{}-{} %\n".format(*split_percentage(hyperparams["splits"])))
-    file1.write("Target scaling = {}\n".format(hyperparams["target_scaling"]))
+    file1.write("Data Split (Train/Val/Test) = {}-{}-{} %\n".format(*split_percentage(train["splits"])))
+    file1.write("Target scaling = {}\n".format(train["target_scaling"]))
     file1.write("Target (train+val) mean = {:.6f} eV\n".format(mean_tv))
     file1.write("Target (train+val) standard deviation = {:.6f} eV\n".format(std_tv))
-    file1.write("Epochs = {}\n".format(hyperparams["epochs"]))
-    file1.write("Batch size = {}\n".format(hyperparams["batch_size"]))
+    file1.write("Epochs = {}\n".format(train["epochs"]))
+    file1.write("Batch size = {}\n".format(train["batch_size"]))
     file1.write("Optimizer = Adam\n")                                            # Kept fixed in this project
     file1.write("Learning Rate scheduler = Reduce Loss On Plateau\n")            # Kept fixed in this project
-    file1.write("Initial learning rate = {}\n".format(hyperparams["lr0"]))
-    file1.write("Minimum learning rate = {}\n".format(hyperparams["minlr"]))
-    file1.write("Patience (lr-scheduler) = {}\n".format(hyperparams["patience"]))
-    file1.write("Factor (lr-scheduler) = {}\n".format(hyperparams["factor"]))
+    file1.write("Initial learning rate = {}\n".format(train["lr0"]))
+    file1.write("Minimum learning rate = {}\n".format(train["minlr"]))
+    file1.write("Patience (lr-scheduler) = {}\n".format(train["patience"]))
+    file1.write("Factor (lr-scheduler) = {}\n".format(train["factor"]))
     file1.write("Loss function = {}\n".format(loss))
     file1.write("---------------------------------------------------------\n")
-    file1.write("Test Set ({} samples): GNN model performance\n".format(N_test))
+    file1.write("GNN PERFORMANCE\n")
+    file1.write("Test set size = {}\n".format(N_test))
     file1.write("Mean Bias Error (MBE) = {:.3f} eV\n".format(ME))
     file1.write("Mean Absolute Error (MAE) = {:.3f} eV\n".format(MAE))
     file1.write("Root Mean Square Error (RMSE) = {:.3f} eV\n".format(RMSE))
@@ -227,7 +240,7 @@ def create_model_report(model_name: str,
     file1.write("Error Standard Deviation = {:.3f} eV\n".format(std_E))
     file1.write("R2 = {:.3f} \n".format(R2))
     file1.write("---------------------------------------------------------\n")
-    file1.write("Outliers detection (test set, 3*std rule)\n")
+    file1.write("OUTLIERS DETECTION (TEST SET)\n")
     outliers_list = []
     outliers_error_list = []
     index_list = []
@@ -246,20 +259,10 @@ def create_model_report(model_name: str,
             plt.savefig("./Models/{}/Outliers/{}.svg".format(model_name, test_label_list[sample].strip()))
             plt.close()
     file1.close()
-    
-    # with open("./Models/{}/training_set.csv".format(model_name), "w") as file2:
-    #     writer = csv.writer(file2, delimiter='\t')
-    #     writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-    #     writer.writerows(zip(train_label_list, y_true, y_pred, E))
-    
-    # with open("./Models/{}/validation_set.csv".format(model_name), "w") as file3:
-    #     writer = csv.writer(file3, delimiter='\t')
-    #     writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-    #     writer.writerows(zip(val_label_list, y_true, y_pred, E))
-            
+                
     with open("./Models/{}/test_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
         writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
         writer.writerows(zip(test_label_list, y_true, y_pred, E))
     
-    return "GNN training saved as {}".format(model_name)
+    return "Model saved in ./Models/{}".format(model_name)

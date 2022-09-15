@@ -3,12 +3,13 @@
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import seaborn as sns
-from constants import DPI
 import numpy as np
 import pandas as pd
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
 from functions import split_percentage
+
+DPI = 500
 
 def hist_num_atoms(n_list:list[int]):
     fig, ax = plt.subplots(figsize=(8/2.54, 4.94/2.54), dpi=DPI)

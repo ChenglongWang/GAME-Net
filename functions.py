@@ -1,7 +1,5 @@
 """Functions for converting DFT data to graphs and for learning process purposes."""
 
-__author__ = "Santiago Morandi"
-
 from paths import paths
 from itertools import product
 import math
@@ -39,7 +37,7 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
 
 def mol_to_ensemble(molecule: Molecule,
                     voronoi_tolerance: float,
-                    atom_rad_dict: dict, 
+                    scaling_factor: float, 
                     second_order: bool) -> Molecule:
     """
     Extract adsorbate + interacting metal atoms from the whole cell.
@@ -52,8 +50,13 @@ def mol_to_ensemble(molecule: Molecule,
     Returns:
         new_molecule(pyRDTP.molecule.Molecule): adsorbate + interacting metal atoms ensemble.
     """
+    elem_rad = {}
+    for metal in METALS:
+        elem_rad[metal] = CORDERO[metal] * scaling_factor
+    for element in MOL_ELEM:
+        elem_rad[element] = CORDERO[element]
     # 1) Define whole connectivity in the cell
-    molecule = connectivity_search_voronoi(molecule, tolerance=voronoi_tolerance, metal_rad_dict=atom_rad_dict)
+    molecule = connectivity_search_voronoi(molecule, voronoi_tolerance, elem_rad)
     # 2) Create Molecule object with adsorbate and interacting metal atoms
     new_atoms = []
     non_metal_atoms = [atom for atom in molecule.atoms if atom.element not in METALS]
@@ -77,43 +80,7 @@ def mol_to_ensemble(molecule: Molecule,
     new_molecule.connection_clear()
     new_molecule.cell_p_add(molecule.cell_p.copy())
     # 4) Define connectivity of the final ensemble
-    new_molecule = connectivity_search_voronoi(new_molecule, tolerance=voronoi_tolerance)
-    return new_molecule
-
-def mol_to_ensemble_CAVITY(molecule: Molecule,
-                           voronoi_tolerance: float,
-                           metal_rad_dict: dict) -> Molecule:
-    """
-    Extract adsorbate + interacting metal atoms from the whole system
-    Function based on pyRDTP. FOR SAC CAVITIES
-    Args:
-        molecule(pyRDTP.molecule.Molecule): molecule object.
-        tolerance(float): parameter for connectivity search 
-                          algorithm in pyRDTP.
-    Returns:
-        new_molecule(pyRDTP.molecule.Molecule): ensemble of adsorbate + 
-                                                interacting metal atoms
-    """
-    # 1) define whole connectivity in the cell
-    molecule = connectivity_search_voronoi(molecule, tolerance=voronoi_tolerance, metal_rad_dict=metal_rad_dict)
-    # 2) create Molecule object with adsorbate and interacting metal atoms
-    new_atoms = []
-    metal_atom = [atom for atom in molecule.atoms if atom.element in METALS]
-    for neighbour in metal_atom[0].connections + [metal_atom[0]]:
-        if neighbour not in new_atoms:
-            new_atoms.append(neighbour)
-        for second_neighbour in neighbour.connections + [neighbour]:
-            if second_neighbour not in new_atoms:
-                new_atoms.append(second_neighbour)
-            # for third_neighbour in second_neighbour.connections + [second_neighbour]:
-            #     if third_neighbour not in new_atoms:
-            #         new_atoms.append(third_neighbour)
-    new_atoms = [atom.copy() for atom in new_atoms]
-    new_molecule = Molecule("")
-    new_molecule.atom_add_list(new_atoms)
-    new_molecule.connection_clear()
-    new_molecule.cell_p_add(molecule.cell_p.copy())
-    new_molecule = connectivity_search_voronoi(new_molecule, tolerance=voronoi_tolerance)    
+    new_molecule = connectivity_search_voronoi(new_molecule, voronoi_tolerance, elem_rad)
     return new_molecule
 
 def ensemble_to_graph(molecule: Molecule, 
@@ -176,11 +143,10 @@ def get_structures(dataset: str) -> dict:
 
 def get_tuples(dataset: str,
                voronoi_tolerance: float,
-               metal_radii_dict: dict, 
-               second_order: bool) -> dict:
+               second_order: bool, 
+               scaling_factor: float) -> dict:
     """
     Generate a dictionary of namedtuple objects for each sample in the dataset.
-    For datasets done by Santiago Morandi.
     Args:
         group_name(str): name of the dataset.
         voronoi_tolerance(float): parameter for the connectivity search in pyRDTP.
@@ -190,30 +156,30 @@ def get_tuples(dataset: str,
         ntuple_dict(dict): dictionary of namedtuple objects.    
     """
     if dataset not in FG_RAW_GROUPS:
-        return "Dataset skipped: it doesn't belong to the FG-dataset."
+        return "Dataset doesn't belong to the FG-dataset"
     surf_ener = {key[:2]: value for key, value in get_energy("metal_surfaces").items()}
     mol_dict = get_structures(dataset)
     ener_dict = get_energy(dataset)
     ntuple = namedtuple(dataset, ['code', 'mol', 'graph', 'energy'])
     ntuple_dict = {}
     for key, mol in mol_dict.items():
-        if dataset[0:3] != 'gas':
+        if dataset[0:3] != 'gas':  # Adsorption systems
             splitted = key.split('-')
             elem, _, _ = splitted
             try:
-                energy = ener_dict[key] - surf_ener[elem]
+                energy = ener_dict[key] - surf_ener[elem]  
             except KeyError:
                 print(f'{key} not found')
                 continue
             try:
-                mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict, second_order)
+                mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order)
                 graph = ensemble_to_graph(mol, second_order)
             except ValueError:
                 print(f'{key} not converting to graph')
                 continue
-        else: # Gas molecules
+        else:  # Gas molecules
             energy = ener_dict[key]
-            mol = mol_to_ensemble(mol, voronoi_tolerance, metal_radii_dict, second_order)
+            mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order)
             graph = ensemble_to_graph(mol, second_order)
         ntuple_dict[key] = ntuple(code=key, mol=mol, graph=graph, energy=energy)
     return ntuple_dict
@@ -221,8 +187,7 @@ def get_tuples(dataset: str,
 def export_tuples(filename: str,
                   tuple_dict: dict):
     """
-    Write text file for GNN raw data from tuple dictionary representing the 
-    dataset.
+    Export processed DFT dataset into text file.
     Args:
         filename (str): file to write
         tuple_dict (tuple): tuple dictionary
@@ -230,7 +195,6 @@ def export_tuples(filename: str,
     with open(filename, 'w') as outfile:
         for code, inter in tuple_dict.items():
             lst_trans = lambda x: " ".join([str(y) for y in x])
-            elems = " ".join([str(element) for element in inter.graph[1][0]])
             outfile.write(f'{code}\n')
             outfile.write(f'{lst_trans(inter.graph[1][0])}\n')
             outfile.write(f'{lst_trans(inter.graph[1][1][0])}\n')
@@ -483,28 +447,22 @@ def scale_target(train_loader: DataLoader,
 
 def connectivity_search_voronoi(molecule: Molecule,
                                 tolerance:float,
-                                scaling_factor: float,
-                                metal_rad_dict:dict=CORDERO,
+                                metal_rad_dict:dict,
                                 center:bool=False) -> Molecule:
     """
     Perform a connectivity search using the Voronoi tessellation. The method
-    considers periodic boundary conditions and CORDERO Radius.
+    considers periodic boundary conditions and CORDERO Radius (modified for metals).
     Args:
-        molecule(pyRDTP.molecule.Molecule): input molecule for which connectivity
+        molecule(pyRDTP.molecule.Molecule): Input molecule for which connectivity
             search is performed.
-        tolerance (float, optional): Tolerance that will be added to the
+        tolerance (float): Tolerance that will be added to the
             medium distance between two atoms.
+        metal_rad_dict (dict): Dictionary of atomic radii of metals and elements
+            of the model.
         center (bool, optional): If True, the direct coordinates array of
             the molecule will be centered before the bond calculation to
             avoid errors in far from the box molecules. The coordinates
             of the molecule will not change.
-    
-    Notes:
-        self.pairs will be fullfilled after the use of this method.
-    Cite:
-        Isayev, O. et al. Universal fragment descriptors for predicting
-            properties of inorganic crystals. Nat. Commun. 8, 15679
-            doi: 10.1038/ncomms15679 (2017).
     """
     if len(molecule.atoms) == 1:
         return molecule
@@ -540,8 +498,7 @@ def connectivity_search_voronoi(molecule: Molecule,
             dst_d[fr_elements] = metal_rad_dict[elements[0]]
             dst_d[fr_elements] += metal_rad_dict[elements[1]]
             dst_d[fr_elements] += tolerance
-        if dst_d[fr_elements] >= molecule.distance(*pair, system='cartesian',
-                                               minimum=True):
+        if dst_d[fr_elements] >= molecule.distance(*pair, system='cartesian', minimum=True):
             pairs_lst.append(pair)
             molecule.atoms[pair[0]].connection_add(molecule.atoms[pair[1]])
     molecule.pairs = np.asarray(pairs_lst)
@@ -626,7 +583,7 @@ def test_loop(model,
         print("Mean Absolute Error = {} eV".format(error))
     return error 
 
-def get_mean_std_from_model(model_path:str) -> tuple[float]:
+def get_mean_std_from_model(path:str) -> tuple[float]:
     """Get mean and standard deviation used for scaling the target values 
        from the selected trained model.
 
@@ -636,7 +593,7 @@ def get_mean_std_from_model(model_path:str) -> tuple[float]:
     Returns:
         mean, std (tuple[float]): mean and standard deviation for scaling the targets.
     """
-    file = open("{}performance.txt".format(model_path), "r")
+    file = open("{}performance.txt".format(path), "r")
     lines = file.readlines()
     for line in lines:
         if "(train+val) mean" in line:
@@ -644,6 +601,29 @@ def get_mean_std_from_model(model_path:str) -> tuple[float]:
         if "(train+val) standard deviation" in line:
             std = float(line.split()[-2])
     return mean, std
+
+def get_graph_conversion_params(path: str) -> tuple:
+    """Get the hyperparameters for geometry->graph conversion algorithm.
+
+    Args:
+        path (str): path to model
+
+    Returns:
+        tuple: voronoi tolerance (float), scaling factor (float), metal nearest neighbours inclusion (bool)
+    """
+    file = open("{}performance.txt".format(path), "r")
+    lines = file.readlines()
+    for line in lines:
+        if "Voronoi" in line:
+            voronoi_tol = float(line.split()[-2])
+        if "radius" in line:
+            scaling_factor = float(line.split()[-1])
+        if "Second order" in line:
+            if line.split()[-1] == "True":
+                second_order_nn = True
+            else:
+                second_order_nn = False
+    return voronoi_tol, scaling_factor, second_order_nn 
 
 def contcar_to_graph(contcar_file: str,
                      voronoi_tolerance: float,

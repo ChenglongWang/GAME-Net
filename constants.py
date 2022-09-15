@@ -2,8 +2,11 @@
 
 from sklearn.preprocessing import OneHotEncoder
 import numpy as np
+from torch.nn.functional import l1_loss, mse_loss, huber_loss
+from torch_geometric.nn import SAGEConv, GATv2Conv, GraphMultisetTransformer
+from torch.nn import ReLU, Tanh
 
-# Atomic radii from Cordero (Do not modify these values!)
+# Atomic radii from Cordero
 CORDERO = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
            'As': 1.19, 'At': 1.50, 'Ba': 2.15, 'Be': 0.96, 'Bi': 1.48,
            'B' : 0.84, 'Br': 1.20, 'Cd': 1.44, 'Ca': 1.76, 'C' : 0.76,
@@ -24,7 +27,7 @@ CORDERO = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
            'Sn': 1.39, 'Ti': 1.60, 'Wf': 1.62, 'U' : 1.96, 'V' : 1.53,
            'Xe': 1.40, 'Yb': 1.87, 'Y' : 1.90, 'Zn': 1.22, 'Zr': 1.75}  
 
-# Atomic elements in the data and one-hot encoder
+# Atomic elements in the data and related one-hot encoder
 MOL_ELEM = ['C', 'H', 'O', 'N', 'S']  
 METALS = ['Ag', 'Au', 'Cd', 'Cu',  
           'Ir', 'Ni', 'Os', 'Pd',
@@ -51,6 +54,12 @@ FG_FAMILIES = ["Amides", "Amidines", "$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}O_{(0,
 FAMILY_DICT = dict(zip(FG_RAW_GROUPS, FG_FAMILIES))
 OTHER_DATASETS = ["Intermediates", "RPCA"]  
 
-# Parameters for plots creation
-DPI = 500
+# Dictionaries for model training features
+loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
+pool_dict = {"GMT": GraphMultisetTransformer}
+pool_seq_dict = {"1": ["GMPool_I"], "2": ["GMPool_G"],
+                 "3": ["GMPool_G", "GMPool_I"], "4": ["GMPool_G", "SelfAtt", "GMPool_I"], 
+                 "5": ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]}
+conv_layer = {"SAGE": SAGEConv, "GATv2": GATv2Conv}
+sigma_dict = {"ReLU": ReLU(), "tanh": Tanh()}
 
