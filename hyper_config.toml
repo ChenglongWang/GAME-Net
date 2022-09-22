@@ -41,5 +41,5 @@ pool_layer_norm = false
 
 [data]
 
-root = "/home/santiago/Desktop/GNN/Data"
+root = "/home/santiago/Desktop/GNN/FG_dataset"
 

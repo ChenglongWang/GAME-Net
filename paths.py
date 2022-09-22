@@ -2,123 +2,30 @@
 NB: datasets with initial capital letter have different structures than the others."""
 
 from pathlib import Path
-import toml
 
-ROOT = toml.load("hyper_config.toml")["data"]["root"]
-graph = toml.load("hyper_config.toml")["graph"]
-pre_id = "pre_" + str(graph["voronoi_tol"]).replace(".","") + "_" + str(graph["second_order_nn"]) + "_" + str(graph["scaling_factor"]).replace(".", "") + ".dat"
-post_id = "post_" + str(graph["voronoi_tol"]).replace(".", "") + "_" + str(graph["second_order_nn"]) + "_" + str(graph["scaling_factor"]).replace(".", "") + ".dat"
+def create_paths(dataset_names: list[str], 
+                root: str, 
+                id: str) -> dict:
+    """Generate Paths for accessing Data of the FG_dataset
 
-paths = {'group2': {'root': ROOT / Path('group2'),
-                    'geom': ROOT / Path('group2/structures'),
-                    'ener': ROOT / Path('group2/energies.dat'),
-                    'dataset': ROOT / Path('group2/{}'.format(pre_id)),
-                    'dataset_p': ROOT / Path('group2/{}'.format(post_id))},
-         'gas_group2': {'root': ROOT / Path('gas_group2'),
-                        'geom': ROOT / Path('gas_group2/structures'),
-                        'ener': ROOT / Path('gas_group2/energies.dat'),
-                        'dataset': ROOT / Path('gas_group2/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_group2/{}'.format(post_id))},
-         'aromatics': {'root': ROOT / Path('aromatics'),
-                    'geom': ROOT / Path('aromatics/structures'),
-                    'ener': ROOT / Path('aromatics/energies.dat'),
-                    'dataset': ROOT / Path('aromatics/{}'.format(pre_id)),
-                    'dataset_p': ROOT / Path('aromatics/{}'.format(post_id))},
-         'gas_aromatics': {'root': ROOT / Path('gas_aromatics'),
-                    'geom': ROOT / Path('gas_aromatics/structures'),
-                    'ener': ROOT / Path('gas_aromatics/energies.dat'),
-                    'dataset': ROOT / Path('gas_aromatics/{}'.format(pre_id)),
-                    'dataset_p': ROOT / Path('gas_aromatics/{}'.format(post_id))},
-         'aromatics2': {'root':  ROOT / Path('aromatics2'), 
-                        'geom': ROOT / Path('aromatics2/structures'), 
-                        'ener': ROOT / Path('aromatics2/energies.dat'), 
-                        'dataset': ROOT / Path('aromatics2/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('aromatics2/{}'.format(post_id))},
-         'gas_aromatics2': {'root':  ROOT / Path('gas_aromatics2'), 
-                        'geom': ROOT / Path('gas_aromatics2/structures'), 
-                        'ener': ROOT / Path('gas_aromatics2/energies.dat'), 
-                        'dataset': ROOT / Path('gas_aromatics2/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_aromatics2/{}'.format(post_id))},
-         'amides': {'root':  ROOT / Path('amides'), 
-                        'geom': ROOT / Path('amides/structures'), 
-                        'ener': ROOT / Path('amides/energies.dat'), 
-                        'dataset': ROOT / Path('amides/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('amides/{}'.format(post_id))},
-         'gas_amides': {'root':  ROOT / Path('gas_amides'), 
-                        'geom': ROOT / Path('gas_amides/structures'), 
-                        'ener': ROOT / Path('gas_amides/energies.dat'), 
-                        'dataset': ROOT / Path('gas_amides/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_amides/{}'.format(post_id))},
-         'carbamate_esters': {'root':  ROOT / Path('carbamate_esters'), 
-                        'geom': ROOT / Path('carbamate_esters/structures'), 
-                        'ener': ROOT / Path('carbamate_esters/energies.dat'), 
-                        'dataset': ROOT / Path('carbamate_esters/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('carbamate_esters/{}'.format(post_id))},
-         'gas_carbamate_esters': {'root':  ROOT / Path('gas_carbamate_esters'), 
-                        'geom': ROOT / Path('gas_carbamate_esters/structures'), 
-                        'ener': ROOT / Path('gas_carbamate_esters/energies.dat'), 
-                        'dataset': ROOT / Path('gas_carbamate_esters/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_carbamate_esters/{}'.format(post_id))},
-         'group2b': {'root':  ROOT / Path('group2b'), 
-                        'geom': ROOT / Path('group2b/structures'), 
-                        'ener': ROOT / Path('group2b/energies.dat'), 
-                        'dataset': ROOT / Path('group2b/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('group2b/{}'.format(post_id))},
-         'gas_group2b': {'root':  ROOT / Path('gas_group2b'), 
-                        'geom': ROOT / Path('gas_group2b/structures'), 
-                        'ener': ROOT / Path('gas_group2b/energies.dat'), 
-                        'dataset': ROOT / Path('gas_group2b/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_group2b/{}'.format(post_id))},
-         'group3S': {'root':  ROOT / Path('group3S'), 
-                     'geom': ROOT / Path('group3S/structures'), 
-                     'ener': ROOT / Path('group3S/energies.dat'), 
-                     'dataset': ROOT / Path('group3S/{}'.format(pre_id)),
-                     'dataset_p': ROOT / Path('group3S/{}'.format(post_id))},
-         'gas_group3S': {'root':  ROOT / Path('gas_group3S'), 
-                         'geom': ROOT / Path('gas_group3S/structures'), 
-                         'ener': ROOT / Path('gas_group3S/energies.dat'), 
-                         'dataset': ROOT / Path('gas_group3S/{}'.format(pre_id)),
-                         'dataset_p': ROOT / Path('gas_group3S/{}'.format(post_id))},
-         'group3N': {'root':  ROOT / Path('group3N'), 
-                     'geom': ROOT / Path('group3N/structures'), 
-                     'ener': ROOT / Path('group3N/energies.dat'), 
-                     'dataset': ROOT / Path('group3N/{}'.format(pre_id)),
-                     'dataset_p': ROOT / Path('group3N/{}'.format(post_id))},
-         'gas_group3N': {'root':  ROOT / Path('gas_group3N'), 
-                         'geom': ROOT / Path('gas_group3N/structures'), 
-                         'ener': ROOT / Path('gas_group3N/energies.dat'), 
-                         'dataset': ROOT / Path('gas_group3N/{}'.format(pre_id)),
-                         'dataset_p': ROOT / Path('gas_group3N/{}'.format(post_id))},
-         'group4': {'root':  ROOT / Path('group4'), 
-                    'geom': ROOT / Path('group4/structures'), 
-                    'ener': ROOT / Path('group4/energies.dat'), 
-                    'dataset': ROOT / Path('group4/{}'.format(pre_id)),
-                    'dataset_p': ROOT / Path('group4/{}'.format(post_id))},
-         'gas_group4': {'root':  ROOT / Path('gas_group4'), 
-                        'geom': ROOT / Path('gas_group4/structures'), 
-                        'ener': ROOT / Path('gas_group4/energies.dat'), 
-                        'dataset': ROOT / Path('gas_group4/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_group4/{}'.format(post_id))},
-         'oximes': {'root':  ROOT / Path('oximes'), 
-                    'geom': ROOT / Path('oximes/structures'), 
-                    'ener': ROOT / Path('oximes/energies.dat'), 
-                    'dataset': ROOT / Path('oximes/{}'.format(pre_id)),
-                    'dataset_p': ROOT / Path('oximes/{}'.format(post_id))},
-         'gas_oximes': {'root':  ROOT / Path('gas_oximes'), 
-                        'geom': ROOT / Path('gas_oximes/structures'), 
-                        'ener': ROOT / Path('gas_oximes/energies.dat'), 
-                        'dataset': ROOT / Path('gas_oximes/{}'.format(pre_id)),
-                        'dataset_p': ROOT / Path('gas_oximes/{}'.format(post_id))},
-         'amidines': {'root':  ROOT / Path('amidines'), 
-                      'geom': ROOT / Path('amidines/structures'), 
-                      'ener': ROOT / Path('amidines/energies.dat'), 
-                      'dataset': ROOT / Path('amidines/{}'.format(pre_id)),
-                      'dataset_p': ROOT / Path('amidines/{}'.format(post_id))},
-         'gas_amidines': {'root':  ROOT / Path('gas_amidines'), 
-                          'geom': ROOT / Path('gas_amidines/structures'), 
-                          'ener': ROOT / Path('gas_amidines/energies.dat'), 
-                          'dataset': ROOT / Path('gas_amidines/{}'.format(pre_id)),
-                          'dataset_p': ROOT / Path('gas_amidines/{}'.format(post_id))},
-         'metal_surfaces': {'root':  ROOT / Path('metal_surfaces'), 
-                            'geom': ROOT / Path('metal_surfaces/structures'), 
-                            'ener': ROOT / Path('metal_surfaces/energies.dat')}}
+    Args:
+        dataset_names (list[str]): List of chemical families 
+        root (str): path to Data folder
+        id (str): Graph representation identifier
+
+    Returns:
+        path_dict (dict)
+    """
+    path_dict = {}
+    for family in dataset_names:                    
+        int_dict = {}
+        int_dict['root'] = root / Path(family)
+        int_dict['geom'] = root / Path(family + "/structures")
+        int_dict['ener'] = root / Path(family + "/energies.dat")
+        int_dict['dataset'] = root / Path(family + "/pre_{}".format(id))
+        int_dict['dataset_p'] = root / Path(family + "/post_{}".format(id))
+        path_dict[family] = int_dict
+    path_dict["metal_surfaces"] = {'root': root / Path('metal_surfaces'), 
+                                   'geom': root / Path('metal_surfaces/structures'), 
+                                   'ener': root / Path('metal_surfaces/energies.dat')}
+    return path_dict

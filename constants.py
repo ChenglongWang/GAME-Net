@@ -51,8 +51,7 @@ FG_FAMILIES = ["Amides", "Amidines", "$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}O_{(0,
                "Aromatics", "Carbamates", "$C_{x}H_{y}O_{(0,1)}$", 
                "$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}N$", "$C_{x}H_{y}S$", 
                "$C_{x}H_{y}O_{(2,3)}$", "Oximes"]  # Proper family used in project (paper, docs, etc)
-FAMILY_DICT = dict(zip(FG_RAW_GROUPS, FG_FAMILIES))
-OTHER_DATASETS = ["Intermediates", "RPCA"]  
+FAMILY_DICT = dict(zip(FG_RAW_GROUPS, FG_FAMILIES))  
 
 # Dictionaries for model training features
 loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
@@ -63,3 +62,6 @@ pool_seq_dict = {"1": ["GMPool_I"], "2": ["GMPool_G"],
 conv_layer = {"SAGE": SAGEConv, "GATv2": GATv2Conv}
 sigma_dict = {"ReLU": ReLU(), "tanh": Tanh()}
 
+# Others
+
+DPI = 500

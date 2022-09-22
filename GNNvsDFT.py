@@ -6,13 +6,13 @@ import argparse
 
 import torch
 
-from functions import get_graph_sample, get_mean_std_from_model
+from functions import get_graph_sample, get_mean_std_from_model, get_graph_conversion_params
 from graph_tools import plotter
 
 if __name__ == "__main__":
-    PARSER = argparse.ArgumentParser(description="Convert DFT calculation to graph and compare the GNN performance to the DFT ground truth")
+    PARSER = argparse.ArgumentParser(description="Convert DFT system to graph and compare the GNN output to the DFT value.")
     PARSER.add_argument("-m", "--model", type=str, dest="model", 
-                        help="Name of the GNN model.")
+                        help="Name of the GNN model (must be present in the Models folder).")
     PARSER.add_argument("-i", "--input", type=str, dest="input", 
                         help="Path to the DFT folder of the specific adsorption system/gas-molecule.")
     PARSER.add_argument("-s", "--slab", type=str, default=None, dest="slab", 
@@ -32,9 +32,16 @@ if __name__ == "__main__":
     model.eval()
     model.to("cpu")  
     mean_tv, std_tv = get_mean_std_from_model(MODEL_PATH)
+    tol, scaling_factor, metal_nn = get_graph_conversion_params(MODEL_PATH)
     
     # 2) Convert input DFT sample to graph object
-    graph = get_graph_sample(ARGS.input, ARGS.slab, family=ARGS.family, surf_multiplier=ARGS.sm)
+    graph = get_graph_sample(ARGS.input,
+                             ARGS.slab,
+                             tol,
+                             scaling_factor,
+                             metal_nn,
+                             family=ARGS.family,
+                             surf_multiplier=ARGS.sm)
     print(graph)
     
     # 3) Get prediction from GNN model

@@ -15,12 +15,10 @@ from sklearn.metrics import r2_score
 import torch.nn.functional as F
 from torchinfo import summary
 
-from constants import ENCODER, FG_FAMILIES
+from constants import ENCODER, FG_FAMILIES, DPI
 from functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from graph_tools import plotter
 from plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
-
-DPI = 500
 
 def create_model_report(model_name: str,
                         configuration_dict: dict,
@@ -29,17 +27,22 @@ def create_model_report(model_name: str,
                         scaling_params : tuple[float], 
                         mae_lists: tuple[list], 
                         device: dict=None):
-    """
-    Create report of the performed GNN learning process.
+    """Create full report of the performed learning process.
 
     Args:
-        model_name (str): Output name of the model
-        model (_type_): GNN model object
-        loaders (tuple[DataLoader]): Train, val and test DataLoaders
-        scaling_params (tuple[float]): Scaling parameters
-        hyperparams (dict): Dictionary with the hyperparameters of the learning process
-        mae_lists (tuple[list]): MAE of the train/val/test sets wrt epoch
+        model_name (str): name of the model
+        configuration_dict (dict): input hyperparams dict from toml input file
+        model (_type_): model object
+        loaders (tuple[DataLoader]): train/val/test sets(loaders)
+        scaling_params (tuple[float]): Scaling params (mean and std of train+val sets)
+        mae_lists (tuple[list]): MAE trends of train/val/test sets during learning process
+        device (dict, optional): Dictionary containing device info. Defaults to None.
+
+    Returns:
+        (str): Confirmation that model has been saved   
     """
+    print("Saving the model ...")
+    
     # Time of the run
     today = date.today()
     today_str = str(today.strftime("%d-%b-%Y"))
@@ -47,17 +50,17 @@ def create_model_report(model_name: str,
     time = time[:8]
     run_period = "{}, {}\n".format(today_str, time)
         
-    # Unfold parameters
+    # Unfold datasets(loaders)
     train_loader = loaders[0]
     val_loader = loaders[1]
     test_loader = loaders[2]
     
-    # Unfold config dict
+    # Unfold input dict
     graph = configuration_dict["graph"]
     train = configuration_dict["train"]
     architecture = configuration_dict["architecture"]
     
-    # Extract Config params
+    # Extract graph conversion parameters
     voronoi_tol = graph["voronoi_tol"]
     second_order_nn = graph["second_order_nn"]
     scaling_factor = graph["scaling_factor"]
@@ -69,11 +72,12 @@ def create_model_report(model_name: str,
     else:
         pass
     
+    # MAE trends during training
     train_list = mae_lists[0]
     val_list = mae_lists[1]
     test_list = mae_lists[2]
     
-    # Create folder where to store files
+    # Create directory where to store model files
     try:
         os.mkdir("./Models/{}".format(model_name))
     except FileExistsError:
@@ -82,10 +86,10 @@ def create_model_report(model_name: str,
     os.mkdir("./Models/{}/Outliers".format(model_name))
     
     # Store info about GNN architecture 
-    with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
-        print(summary(model, batch_dim=train["batch_size"], verbose=2), file=f)
+    # with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
+    #    print(summary(model, batch_dim=train["batch_size"], verbose=2), file=f)
     
-    # Save GNN model object and parameters
+    # Save model architecture and parameters
     torch.save(model, "./Models/{}/model.pth".format(model_name)) 
     torch.save(model.state_dict(), "./Models/{}/GNN.pth".format(model_name))
         
@@ -93,6 +97,10 @@ def create_model_report(model_name: str,
     if device != None:
         with open('./Models/{}/device.txt'.format(model_name), 'w') as f:
             print(device, file=f)
+            
+    # Store Hyperparameters dict from input file
+    with open('./Models/{}/input.txt'.format(model_name), 'w') as g:
+        print(configuration_dict, file=g)
     
     loss = train["loss_function"] 
         
@@ -129,24 +137,20 @@ def create_model_report(model_name: str,
     model.eval()
     model.to("cpu")
     
-    w_pred = []
-    w_true = []
+    w_pred, w_true = [], []  # Scaled outputs [-]
     for batch in test_loader:
         batch = batch.to("cpu")
         w_pred += model(batch)
         w_true += batch.y
-    N_test = len(test_loader.dataset)
-    train_label_list = []
+    y_pred = [w_pred[i].item()*std_tv + mean_tv for i in range(N_test)]  # Outputs in eV
+    y_true = [w_true[i].item()*std_tv + mean_tv for i in range(N_test)]
+    train_label_list, val_label_list, test_label_list = [], [], []
     for data in train_loader.dataset:
         train_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
-    val_label_list = []
     for data in val_loader.dataset:
         val_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
-    test_label_list  = []    
     for data in test_loader.dataset:
         test_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
-    y_pred = [w_pred[i].item() * std_tv + mean_tv for i in range(N_test)]
-    y_true = [w_true[i].item() * std_tv + mean_tv for i in range(N_test)]
     # Histogram based on number of adsorbate atoms (train+val+test dataset)
     n_list = []
     for graph in train_loader.dataset:
@@ -158,7 +162,7 @@ def create_model_report(model_name: str,
     fig, ax = hist_num_atoms(n_list)
     plt.savefig("./Models/{}/num_atoms_hist.svg".format(model_name), bbox_inches='tight')
     plt.close()
-    # Violinplot based on chemical family (test set)
+    # Violinplot sorted by chemical family
     fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
     plt.savefig("./Models/{}/test_violin.svg".format(model_name), bbox_inches='tight')
     plt.close()
@@ -177,17 +181,11 @@ def create_model_report(model_name: str,
     fig, ax = training_plot(train_list, val_list, test_list, train["splits"])
     plt.savefig("./Models/{}/learning_curve.svg".format(model_name), bbox_inches='tight')
     plt.close()
-    # Error analysis
+    # Error analysis (test set)
     E = [(y_pred[i] - y_true[i]) for i in range(N_test)]     # Error
     AE = [abs(E[i]) for i in range(N_test)]                  # Absolute Error
     SE = [E[i] ** 2 for i in range(N_test)]                  # Squared Error
     APE = [abs(E[i] / y_true[i]) for i in range(N_test)]     # Absolute Percentage Error
-    ME = np.mean(E)                                          # eV
-    MAE = np.mean(AE)                                        # eV
-    MSE = np.mean(SE)                                        # eV^2
-    RMSE = np.sqrt(MSE)                                      # eV
-    MAPE = np.mean(APE) * 100.0                              # %
-    R2 = r2_score(y_true, y_pred)                            # -
     std_E = np.std(E)                                        # eV
     # Test set: Error distribution plot
     sns.displot(E, bins=50, kde=True)
@@ -233,14 +231,14 @@ def create_model_report(model_name: str,
     file1.write("---------------------------------------------------------\n")
     file1.write("GNN PERFORMANCE\n")
     file1.write("Test set size = {}\n".format(N_test))
-    file1.write("Mean Bias Error (MBE) = {:.3f} eV\n".format(ME))
-    file1.write("Mean Absolute Error (MAE) = {:.3f} eV\n".format(MAE))
-    file1.write("Root Mean Square Error (RMSE) = {:.3f} eV\n".format(RMSE))
-    file1.write("Mean Absolute Percentage Error (MAPE) = {:.3f} %\n".format(MAPE))
-    file1.write("Error Standard Deviation = {:.3f} eV\n".format(std_E))
-    file1.write("R2 = {:.3f} \n".format(R2))
+    file1.write("Mean Bias Error (MBE) = {:.3f} eV\n".format(np.mean(E)))
+    file1.write("Mean Absolute Error (MAE) = {:.3f} eV\n".format(np.mean(AE)))
+    file1.write("Root Mean Square Error (RMSE) = {:.3f} eV\n".format(np.sqrt(np.mean(SE))))
+    file1.write("Mean Absolute Percentage Error (MAPE) = {:.3f} %\n".format(np.mean(APE)*100.0))
+    file1.write("Error Standard Deviation = {:.3f} eV\n".format(np.std(E)))
+    file1.write("R2 = {:.3f} \n".format(r2_score(y_true, y_pred)))
     file1.write("---------------------------------------------------------\n")
-    file1.write("OUTLIERS DETECTION (TEST SET)\n")
+    file1.write("OUTLIERS (TEST SET)\n")
     outliers_list = []
     outliers_error_list = []
     index_list = []

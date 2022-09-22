@@ -1,6 +1,5 @@
 """Functions for converting DFT data to graphs and for learning process purposes."""
 
-from paths import paths
 from itertools import product
 import math
 from collections import namedtuple
@@ -111,7 +110,7 @@ def ensemble_to_graph(molecule: Molecule,
         mol_graph.add_edge(*connection)
     return mol_graph, (elem_lst, (tuple(connections_1), tuple(connections_2)))
 
-def get_energy(dataset: str) -> dict:
+def get_energy(dataset: str, paths_dict:dict) -> dict:
     """
     Extract the raw energy label for each sample of the dataset from the energies.dat file.    
     Args:
@@ -119,7 +118,7 @@ def get_energy(dataset: str) -> dict:
     Returns:
         ener_dict(dict): Dictionary with raw total energy (sigma->0) [eV].    
     """
-    with open(paths[dataset]['ener'], 'r') as infile:
+    with open(paths_dict[dataset]['ener'], 'r') as infile:
         lines = infile.readlines()
     ener_dict = {}
     for line in lines:        
@@ -127,7 +126,7 @@ def get_energy(dataset: str) -> dict:
         ener_dict[split[0]] = float(split[1])
     return ener_dict
 
-def get_structures(dataset: str) -> dict:
+def get_structures(dataset: str, paths_dict: dict) -> dict:
     """
     Extract the structure for each sample of the dataset from the 
     CONTCAR files in the "structures" folder.
@@ -137,14 +136,15 @@ def get_structures(dataset: str) -> dict:
         mol_dict(dict): Dictionary with pyRDTP.Molecule objects for each sample.  
     """
     mol_dict = {}
-    for contcar in paths[dataset]['geom'].glob('./*.contcar'):
+    for contcar in paths_dict[dataset]['geom'].glob('./*.contcar'):
         mol_dict[contcar.stem] = file_to_mol(contcar, 'contcar', bulk=False)
     return mol_dict
 
 def get_tuples(dataset: str,
                voronoi_tolerance: float,
                second_order: bool, 
-               scaling_factor: float) -> dict:
+               scaling_factor: float, 
+               paths_dict: dict) -> dict:
     """
     Generate a dictionary of namedtuple objects for each sample in the dataset.
     Args:
@@ -157,9 +157,9 @@ def get_tuples(dataset: str,
     """
     if dataset not in FG_RAW_GROUPS:
         return "Dataset doesn't belong to the FG-dataset"
-    surf_ener = {key[:2]: value for key, value in get_energy("metal_surfaces").items()}
-    mol_dict = get_structures(dataset)
-    ener_dict = get_energy(dataset)
+    surf_ener = {key[:2]: value for key, value in get_energy("metal_surfaces", paths_dict).items()}
+    mol_dict = get_structures(dataset, paths_dict)
+    ener_dict = get_energy(dataset, paths_dict)
     ntuple = namedtuple(dataset, ['code', 'mol', 'graph', 'energy'])
     ntuple_dict = {}
     for key, mol in mol_dict.items():
@@ -201,7 +201,7 @@ def export_tuples(filename: str,
             outfile.write(f'{lst_trans(inter.graph[1][1][1])}\n')
             outfile.write(f'{inter.energy}\n')
 
-def geometry_to_graph_analysis(dataset:str):
+def geometry_to_graph_analysis(dataset:str, paths_dict:dict):
     """
     Check that all adsorption samples in the dataset are correctly 
     converted to a graph.
@@ -213,13 +213,13 @@ def geometry_to_graph_analysis(dataset:str):
         wrong_samples(list): list of the badly represented data.
         dataset_size(int): dataset size.
     """
-    with open("./Data/{}/Dataset.dat".format(dataset)) as f:
+    with open(paths_dict[dataset]["dataset"]) as f:
         all_lines = f.readlines()
     dataset_size = int(len(all_lines)/5)
     if dataset[:3] == "gas":
-        print("{} dataset contains gas phase molecules".format(dataset))
+        print("{}: dataset of gas phase molecules".format(dataset))
         print("------------------------------------------")
-        return dataset_size
+        return 0, [], dataset_size
     
     lines = []
     labels = []
@@ -237,9 +237,9 @@ def geometry_to_graph_analysis(dataset:str):
         if new_list[i] == []:
             wrong_samples.append(labels[i])
     wrong_graphs = int(new_list.count([]))
-    print("Dataset Name: {}".format(dataset))
-    print("Dataset Size: {}".format(dataset_size))
-    print("Number of badly represented data: {}".format(wrong_graphs))
+    print("Dataset: {}".format(dataset))
+    print("Size: {}".format(dataset_size))
+    print("Bad representations: {}".format(wrong_graphs))
     print("Percentage of bad representations: {:.2f}%".format((wrong_graphs/dataset_size)*100))
     print("-------------------------------------------")
     return wrong_graphs, wrong_samples, dataset_size
@@ -616,7 +616,7 @@ def get_graph_conversion_params(path: str) -> tuple:
     for line in lines:
         if "Voronoi" in line:
             voronoi_tol = float(line.split()[-2])
-        if "radius" in line:
+        if "scaling factor" in line:
             scaling_factor = float(line.split()[-1])
         if "Second order" in line:
             if line.split()[-1] == "True":
@@ -627,7 +627,7 @@ def get_graph_conversion_params(path: str) -> tuple:
 
 def contcar_to_graph(contcar_file: str,
                      voronoi_tolerance: float,
-                     atomic_radius_dict: dict,
+                     scaling_factor: dict,
                      second_order: bool, 
                      one_hot_encoder=ENCODER) -> Data:
     """Create graph representation from VASP CONTCAR file
@@ -642,7 +642,7 @@ def contcar_to_graph(contcar_file: str,
         graph (torch_geometric.data.Data): Graph object representing the system under study.
     """
     mol = file_to_mol(contcar_file, 'contcar', bulk=False)
-    mol = mol_to_ensemble(mol, voronoi_tolerance, atomic_radius_dict, second_order=second_order)
+    mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order=second_order)
     nx_graph = ensemble_to_graph(mol, second_order=second_order)
     elem = list(nx_graph[1][0])
     source = list(nx_graph[1][1][0])
@@ -657,39 +657,56 @@ def contcar_to_graph(contcar_file: str,
 def get_graph_sample(system: str, 
                      surface: str,
                      voronoi_tolerance: float, 
-                     atomic_radius_dict: dict, 
+                     scaling_factor: dict, 
                      second_order: bool,
                      encoder: OneHotEncoder=ENCODER,
                      gas_mol: bool=False,
                      family: str=None, 
                      surf_multiplier: int=None) -> Data:
     """ 
-    Generate labelled graph samples from VASP files.
+    Generate labelled graph samples from VASP simulations.
     
     Args: 
         system (str): path to the VASP folder containing the adsorption system
         surface (str): path to the VASP folder containing the empty surface
         voronoi_tolerance (float): tolerance applied during the conversion to graph
-        atomic_radius_dict (dict): dictionary containing the atomic radii of elements
-                                   for the conversion to graph
+        scaling_factor (float): scaling parameter for the atomic radii of metals
+        second_order (bool): Inclusion of 2-hop metal neighbours
         encoder (OneHotEncoder): one-hot encoder used to represent atomic elements    
     Returns: 
-        graph (Data): graph sample with label for comparison GNN-VASP.
+        graph (Data): Labelled graph sample
     """
-    system_energy = Outcar("{}/OUTCAR".format(system)).final_energy
     graph = contcar_to_graph("{}/CONTCAR".format(system),
                              voronoi_tolerance=voronoi_tolerance, 
-                             atomic_radius_dict=atomic_radius_dict, 
-                             one_hot_encoder=encoder, 
-                             second_order=second_order) 
-    graph.y = system_energy
+                             scaling_factor=scaling_factor,
+                             second_order=second_order, 
+                             one_hot_encoder=encoder) # Graph structure
+    graph.y = Outcar("{}/OUTCAR".format(system)).final_energy  # Graph label
     if gas_mol == False:
         surf_energy = Outcar("{}/OUTCAR".format(surface)).final_energy
         if surf_multiplier is not None:
             surf_energy *= surf_multiplier
         graph.y -= surf_energy  
-    graph.formula = get_graph_formula(graph, ENCODER.categories_[0])
+    graph.formula = get_graph_formula(graph, encoder.categories_[0])
     if family is not None:
         graph.family = family
     return graph
+
+def get_id(graph_params: dict) -> str:
+    """
+    Return string associated to a specific graph representation setting, 
+    consistsing of tolerance, scaling factor, 2-hop metals inclusion in the 
+    conversion from geometry to graph.
+    Args
+        graph_params (dict): must contain the keys below
+    Returns
+        pre_id (str)
+    """
+    identifier = str(graph_params["voronoi_tol"]).replace(".","")
+    identifier += "_"
+    identifier += str(graph_params["second_order_nn"])
+    identifier += "_"
+    identifier += str(graph_params["scaling_factor"]).replace(".", "")
+    identifier += ".dat"
+    return identifier
     

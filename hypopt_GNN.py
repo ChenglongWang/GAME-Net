@@ -3,9 +3,9 @@
 __author__ = "Santiago Morandi"
 
 import argparse
-import sys
-from datetime import date, datetime
+from datetime import datetime
 import os
+from os.path import exists
 os.environ["TUNE_RESULT_DELIM"] = "/"
 
 import torch
@@ -19,13 +19,21 @@ from ray.tune import Stopper
 import ray
 import pandas as pd
 
-from constants import NODE_FEATURES
+from constants import NODE_FEATURES, FG_RAW_GROUPS
 from nets import FlexibleNet
-from functions import train_loop, test_loop, scale_target, create_loaders
-from processed_datasets import FG_dataset, BM_dataloader
+from functions import train_loop, test_loop, scale_target, create_loaders, get_id
+from processed_datasets import BM_dataloader, create_post_processed_datasets
 from post_training import create_model_report
+from create_graph_datasets import create_graph_datasets
+from paths import create_paths
 
+#--------------------------------------------------------------------------------------------#
 HYPERPARAMS = {}
+# Graph setting (THESE ARE NOT HYPERPARAMS, DO NOT SWITCH THEM TO VARIABLES!)
+HYPERPARAMS["voronoi_tol"] = 0.5   
+HYPERPARAMS["scaling_factor"] = 1.5
+HYPERPARAMS["second_order_nn"] = False
+HYPERPARAMS["data"] = "/home/santiago/Desktop/GNN/FG_dataset"
 # Process-related
 HYPERPARAMS["test_set"] = True          
 HYPERPARAMS["splits"] = 10              
@@ -60,10 +68,11 @@ HYPERPARAMS["pool_seq"] = tune.choice([["GMPool_I"],
                                        ["GMPool_G", "SelfAtt", "GMPool_I"],
                                        ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]])
 HYPERPARAMS["pool_layer_norm"] = False 
-
+#--------------------------------------------------------------------------------------------#
     
 if __name__ == "__main__":
-    PARSER = argparse.ArgumentParser(description="Perform hyperparameter optimization with Ray-Tune with ASynchronous Hyperband Algorithm (ASHA).")
+    PARSER = argparse.ArgumentParser(description="Perform hyperparameter optimization with Ray-Tune \
+                                     with ASynchronous Hyperband Algorithm (ASHA).")
     PARSER.add_argument("-o", "--output", type=str, dest="o", 
                         help="Name of the directory where results will be stored.")
     PARSER.add_argument("-s", "--samples", default=10, type=int, dest="s",
@@ -88,6 +97,18 @@ if __name__ == "__main__":
         Args:
             config (dict): Dictionary with search space (hyperparameters)
         """    
+        # Create FG-dataset from raw DFT data 
+        data_path = HYPERPARAMS["data"]
+        graph_identifier = get_id(config)
+        family_paths = create_paths(FG_RAW_GROUPS, data_path, graph_identifier)
+        if exists(data_path + "/amides/pre_" + graph_identifier):  
+            FG_dataset = create_post_processed_datasets(graph_identifier, family_paths)
+        else:
+            print("Creating graphs from raw data ...")  
+            create_graph_datasets(config, family_paths)
+            FG_dataset = create_post_processed_datasets(graph_identifier, family_paths)
+        
+        # Create train/val/test sets 
         train_loader, val_loader, test_loader = create_loaders(FG_dataset,
                                                                config["splits"],
                                                                config["batch_size"], 
@@ -123,9 +144,7 @@ if __name__ == "__main__":
                                          patience=config["patience"],
                                          min_lr=config["minlr"]) 
     
-        train_list = [] # Store training MAE during training
-        val_list = []   # Store validation MAE during training
-        test_list = []  # Store test MAE during training   
+        train_list, val_list, test_list = [], [], [] # Store MAE during training
         for iteration in range(1, config["epochs"]+1):
             lr = lr_scheduler.optimizer.param_groups[0]['lr']
             _, train_MAE = train_loop(model, device, train_loader, optimizer, config["loss_function"])  
@@ -144,14 +163,14 @@ if __name__ == "__main__":
             train_list.append(train_MAE * std)
             val_list.append(val_MAE)
             test_list.append(test_MAE)
-        if BM_MAE <= 0.5:  # If the extrapolation performance is good, save the model!
+        if BM_MAE <= ARGS.target:  # If the extrapolation performance is good, save the model!
             time = str(datetime.now())[11:]
             time = time[:8]
             create_model_report("{}_{}".format(ARGS.o, time),
+                                HYPERPARAMS,  # Wrong
                                 model,
                                 (train_loader, val_loader, test_loader),
                                 (mean, std),
-                                config,
                                 (train_list, val_list, test_list))
         
     hypopt_scheduler = ASHAScheduler(time_attr="epoch",
