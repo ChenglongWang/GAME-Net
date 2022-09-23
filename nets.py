@@ -6,8 +6,10 @@ import torch
 from torch.nn import Linear, GRU 
 from torch_geometric.nn import Set2Set, CGConv, Set2Set, SAGEConv, GraphMultisetTransformer
 import torch.nn.functional as F
+from torch_geometric.data import Data
 
 from constants import NODE_FEATURES
+from functions import get_graph_conversion_params, get_mean_std_from_model
 class Net_TEMPLATE(torch.nn.Module):
     """Reference GNN class template
     Args:
@@ -231,3 +233,22 @@ class FlexibleNet(torch.nn.Module):
         #----------------------
         out = self.pool(out, data.batch, data.edge_index)
         return out.view(-1)
+
+class PreTrainedModel():
+    def __init__(self, model_name: str):
+        "Container class for loading pre-trained GNN models"
+        self.model_name = model_name
+        self.model_path = "./Models/{}/".format(model_name)
+        self.model = torch.load("{}/model.pth".format(self.model_path))
+        self.model.load_state_dict(torch.load("{}GNN.pth".format(self.model_path)))
+        self.model.eval()  # Inference mode
+        self.model.to("cpu")
+        # Load scaling parameters
+        self.mean, self.std = get_mean_std_from_model(self.model_path)
+        # Load graph conversion parameters
+        self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(self.model_path)
+    
+    def evaluate(self, graph: Data) -> float:
+        "Evaluate graph energy in eV"
+        return self.model(graph).item() * self.std + self.mean
+    
