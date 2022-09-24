@@ -1,61 +1,57 @@
-"""Interactive script for predicting the adsorption energy of molecules on metals via SantyxNet Graph Neural Network"""
+"""Interactive script for predicting the adsorption energy of molecules on metals with Graph Neural Networks"""
 
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
 from chemspipy import ChemSpider
 from pyRDTP.tools.pymol import from_smiles
 
-from constants import METALS, NODE_FEATURES, ENCODER
-from functions import connectivity_search_voronoi, ensemble_to_graph, get_mean_std_from_model
-from nets import SantyxNet
+from constants import METALS, ENCODER, CORDERO, MOL_ELEM
+from functions import connectivity_search_voronoi, ensemble_to_graph
+from nets import PreTrainedModel
 from graph_tools import plotter
 
-MODEL_PATH = "./Models/GMT_2heads"            # Best model in extrapolation
+MODEL = "LONG_NIGHT_full"            
 API_KEY = "NmdJjTAaDxkBoDYGrSRLQED9zKOhmqJ9"  # Chemspider key to access database
 cs = ChemSpider(API_KEY)
 to_int = lambda x: [float(i) for i in x]
 
-# 1) LOAD MODEL
-model = SantyxNet(dim=128, node_features=NODE_FEATURES)               # Load model architecture
-model.load_state_dict(torch.load("{}/GNN.pth".format(MODEL_PATH)))    # Load model parameters
-model.eval()                                                          # Set model in inference mode
-mean_tv, std_tv = get_mean_std_from_model(MODEL_PATH + "/")           # Load scaling parameters
-# 2) INTERACTIVE SECTION
+# 1) Load model
+model = PreTrainedModel(MODEL)
+# 2) Interactive section
 print("---------------------------------------------------")
-print("Welcome to the Graph Generator for the GNN Project!")
+print("Welcome to the graph neural network (GNN)interface!")
 print("---------------------------------------------------")
-print("Author: Ing. Santiago Morandi (ICIQ)\n")
+print("Author: Santiago Morandi (ICIQ)\n")
 adsorbate = input("1) Type the name of the molecule (ex. Vitamin C): ")
 result = cs.search(adsorbate)[0]
 SMILES = result.smiles
 formula = result.molecular_formula
 print("Molecule: {}    Formula: {}    SMILES: {}\n".format(adsorbate, formula, SMILES))
 molecule = from_smiles(SMILES)
-molecule = connectivity_search_voronoi(molecule)
-graph = ensemble_to_graph(molecule)
-elem = list(graph[1][0])
-source = list(graph[1][1][0])
-target = list(graph[1][1][1])
+elem_rad = {}  # Atomic radius dict for graph edge detection
+for metal in METALS:
+    elem_rad[metal] = CORDERO[metal] * model.g_sf
+for element in MOL_ELEM:
+    elem_rad[element] = CORDERO[element]
+molecule = connectivity_search_voronoi(molecule, model.g_tol, elem_rad)
+graph = ensemble_to_graph(molecule, model.g_metal_2nn)
+elem, source, target = list(graph[1][0]), list(graph[1][1][0]), list(graph[1][1][1])
 adsorption = input("2) Do you want to evaluate the molecule on an adsorption configuration?[y/n]: ")
 if adsorption == "n":
     elem_array = np.array(elem).reshape(-1, 1)
     elem_enc = ENCODER.transform(elem_array).toarray()
     edge_index = torch.tensor([source, target], dtype=torch.long)
     x = torch.tensor(elem_enc, dtype=torch.float)
-    data = Data(x=x, edge_index=edge_index)
-    plotter(data)
+    gas_graph = Data(x=x, edge_index=edge_index)
+    plotter(gas_graph)
     plt.show()
-    DL = DataLoader([data], batch_size=1)   
-    for batch in DL:
-        energy = model(batch)
-    energy = energy.item() * std_tv + mean_tv
+    gnn_energy = model.evaluate(gas_graph)
     print("-----------------------------------")
     print("-----------GNN PREDICTION----------")
     print("-----------------------------------")
-    print("Gas energy = {:.2f} eV (PBE + VdW)".format(energy))
+    print("GNN energy = {:.2f} eV (PBE + VdW)".format(gnn_energy))
 elif adsorption == "y":
     elem_array_ads = np.array(elem).reshape(-1, 1)
     elem_enc_ads = ENCODER.transform(elem_array_ads).toarray()
@@ -86,21 +82,18 @@ elif adsorption == "y":
     elem_enc = ENCODER.transform(elem_array).toarray()
     edge_index = torch.tensor([source, target], dtype=torch.long)
     x = torch.tensor(elem_enc, dtype=torch.float)
-    data = Data(x=x, edge_index=edge_index)
-    plotter(data)
+    ads_graph = Data(x=x, edge_index=edge_index)
+    plotter(ads_graph)
     plt.show()
-    DL = DataLoader([data, adsorbate], batch_size=2)   
-    for batch in DL:
-        energy = model(batch)
-    E_ensemble = energy[0].item() * std_tv + mean_tv
-    E_molecule = energy[1].item() * std_tv + mean_tv
+    E_ensemble = model.evaluate(ads_graph)
+    E_molecule = model.evaluate(adsorbate)
     E_adsorption = E_ensemble - E_molecule
     print("-----------------------------------")
     print("-----------GNN PREDICTION----------")
     print("-----------------------------------")
-    print("Ensemble energy = {:.2f} eV (PBE + VdW)".format(E_ensemble))
-    print("Molecule energy = {:.2f} eV (PBE + VdW)".format(E_molecule))
-    print("Adsorption energy = {:.2f} eV".format(E_adsorption))
+    print("GNN ensemble energy = {:.2f} eV (PBE + VdW)".format(E_ensemble))
+    print("GNN molecule energy = {:.2f} eV (PBE + VdW)".format(E_molecule))
+    print("GNN adsorption energy = {:.2f} eV".format(E_adsorption))
     
     
 
