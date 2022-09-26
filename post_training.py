@@ -1,5 +1,5 @@
 """
-Module for post-processing and collecting data.
+Module for post-processing and collecting data after GNN model training.
 """
 
 import os
@@ -12,7 +12,6 @@ import csv
 import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
-import torch.nn.functional as F
 from torchinfo import summary
 
 from constants import ENCODER, FG_FAMILIES, DPI
@@ -85,7 +84,7 @@ def create_model_report(model_name: str,
         os.mkdir("./Models/{}".format(model_name))
     os.mkdir("./Models/{}/Outliers".format(model_name))
     
-    # Store info about GNN architecture 
+    # Store info about GNN architecture # NOT NEEDED NOW AS THE FLEXIBLE NET ALWAYS INCUDES EVERYTHING 
     # with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
     #    print(summary(model, batch_dim=train["batch_size"], verbose=2), file=f)
     
@@ -129,21 +128,39 @@ def create_model_report(model_name: str,
         file1.write("Patience (lr-scheduler) = {}\n".format(train["patience"]))
         file1.write("Factor (lr-scheduler) = {}\n".format(train["factor"]))
         file1.write("Loss function = {}\n".format(loss))
-        file1.close() 
-        return None 
+        file1.close()
+        return "Model saved in ./Models/{}".format(model_name)
     
     N_test = len(test_loader.dataset)  
     N_tot = N_train + N_val + N_test    
     model.eval()
     model.to("cpu")
     
-    w_pred, w_true = [], []  # Scaled outputs [-]
+    # w, y = test set
+    # x, z = train set
+    # a, b = val set
+    w_pred, w_true = [], []  # Test set
+    x_pred, x_true = [], []  # Train set
+    a_pred, a_true = [], []  # Validation set
+    
     for batch in test_loader:
         batch = batch.to("cpu")
         w_pred += model(batch)
         w_true += batch.y
-    y_pred = [w_pred[i].item()*std_tv + mean_tv for i in range(N_test)]  # Outputs in eV
+    for batch in train_loader:
+        batch = batch.to("cpu")
+        x_pred += model(batch)
+        x_true += batch.y
+    for batch in val_loader:
+        batch = batch.to("cpu")
+        a_pred += model(batch)
+        a_true += batch.y
+    y_pred = [w_pred[i].item()*std_tv + mean_tv for i in range(N_test)]  # Test set
     y_true = [w_true[i].item()*std_tv + mean_tv for i in range(N_test)]
+    z_pred = [x_pred[i].item()*std_tv + mean_tv for i in range(N_train)]  # Train set
+    z_true = [x_true[i].item()*std_tv + mean_tv for i in range(N_train)]
+    b_pred = [a_pred[i].item()*std_tv + mean_tv for i in range(N_val)]  # Val set
+    b_true = [a_true[i].item()*std_tv + mean_tv for i in range(N_val)]
     train_label_list, val_label_list, test_label_list = [], [], []
     for data in train_loader.dataset:
         train_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
@@ -257,10 +274,21 @@ def create_model_report(model_name: str,
             plt.savefig("./Models/{}/Outliers/{}.svg".format(model_name, test_label_list[sample].strip()))
             plt.close()
     file1.close()
-                
+    
+    # Save train, val, test set error of the samples            
     with open("./Models/{}/test_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
         writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
         writer.writerows(zip(test_label_list, y_true, y_pred, E))
+        
+    with open("./Models/{}/train_set.csv".format(model_name), "w") as file4:
+        writer = csv.writer(file4, delimiter='\t')
+        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
+        writer.writerows(zip(train_label_list, z_true, z_pred, [(z_pred[i] - z_true[i]) for i in range(N_train)]))
+        
+    with open("./Models/{}/validation_set.csv".format(model_name), "w") as file4:
+        writer = csv.writer(file4, delimiter='\t')
+        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
+        writer.writerows(zip(val_label_list, b_true, b_pred, [(b_pred[i] - b_true[i]) for i in range(N_val)]))
     
     return "Model saved in ./Models/{}".format(model_name)
