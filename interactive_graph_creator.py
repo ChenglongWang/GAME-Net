@@ -1,6 +1,7 @@
 """Interactive script for predicting the adsorption energy of molecules on metals with Graph Neural Networks"""
 
 import numpy as np
+import time
 import matplotlib.pyplot as plt
 import torch
 from torch_geometric.data import Data
@@ -17,12 +18,17 @@ API_KEY = "NmdJjTAaDxkBoDYGrSRLQED9zKOhmqJ9"  # Chemspider key to access databas
 cs = ChemSpider(API_KEY)
 to_int = lambda x: [float(i) for i in x]
 
+def surf(metal:str) -> str:
+    if metal in ["Ag", "Au", "Cu", "Ir", "Ni", "Pd", "Pt", "Rh"]:
+        return "111"
+    else:
+        return "0001"
 # 1) Load model
 model = PreTrainedModel(MODEL)
 # 2) Interactive section
-print("---------------------------------------------------")
-print("Welcome to the graph neural network (GNN)interface!")
-print("---------------------------------------------------")
+print("----------------------------------------------------")
+print("Welcome to the graph neural network (GNN) interface!")
+print("----------------------------------------------------")
 print("Author: Santiago Morandi (ICIQ)\n")
 adsorbate = input("1) Type the name of the molecule (ex. Vitamin C): ")
 result = cs.search(adsorbate)[0]
@@ -45,22 +51,25 @@ if adsorption == "n":
     edge_index = torch.tensor([source, target], dtype=torch.long)
     x = torch.tensor(elem_enc, dtype=torch.float)
     gas_graph = Data(x=x, edge_index=edge_index)
-    plotter(gas_graph)
-    plt.show()
+    #plotter(gas_graph)
+    #plt.show()
+    time0 = time.time()
     gnn_energy = model.evaluate(gas_graph)
+    gnn_time = time.time() - time0
     print("-----------------------------------")
     print("-----------GNN PREDICTION----------")
     print("-----------------------------------")
     print("GNN energy = {:.2f} eV (PBE + VdW)".format(gnn_energy))
+    print("GNN execution time = {:.2f} ms".format(gnn_time * 1000.0))
 elif adsorption == "y":
     elem_array_ads = np.array(elem).reshape(-1, 1)
     elem_enc_ads = ENCODER.transform(elem_array_ads).toarray()
     edge_index_ads = torch.tensor([source, target], dtype=torch.long)
     x_ads = torch.tensor(elem_enc_ads, dtype=torch.float)
-    adsorbate = Data(x=x_ads, edge_index=edge_index_ads)    
+    adsorbate_graph = Data(x=x_ads, edge_index=edge_index_ads)    
     metal = None
     while metal not in METALS:
-        metal = input("3) Define metal species (e.g., Pd): ")
+        metal = input("3) Define metal species (e.g., Pd): ").capitalize()
         if metal not in METALS:
             print("Unknown species (Available metals: Ag Au Cd Cu Ir Ni Os Pd Pt Rh Ru Zn)")
     n_metals = int(input("4) Define the number of metal atoms interacting with the adsorbate: "))
@@ -68,32 +77,36 @@ elif adsorption == "y":
     print("Legend: {}".format(moldict))
     for i in range(n_metals):
         elem.append(metal)
+    elem_array = np.array(elem).reshape(-1, 1)
+    elem_enc = ENCODER.transform(elem_array).toarray()
+    x = torch.tensor(elem_enc, dtype=torch.float)
     for metal_atom in range(n_metals):
-        x = int(input("{} atom {}: Define number of connections: ".format(metal, metal_atom+1)))
-        for bond in range(x):
-            source.append(metal_atom + len(elem))
+        edges_per_metal = int(input("{} atom {}: Define number of connections: ".format(metal, metal_atom+1)))
+        for bond in range(edges_per_metal):
+            source.append(metal_atom + len(elem) - n_metals)
             y = int(input("{} atom {}, connection {}: define index of the connected element: ".format(metal, metal_atom+1, bond+1)))
             if y >= len(elem):
                 raise ValueError("Wrong defined connection. Check the printed legend")
             target.append(y)
             source.append(y)
-            target.append(metal_atom + len(elem))
-    elem_array = np.array(elem).reshape(-1, 1)
-    elem_enc = ENCODER.transform(elem_array).toarray()
+            target.append(metal_atom + len(elem) - n_metals)
     edge_index = torch.tensor([source, target], dtype=torch.long)
-    x = torch.tensor(elem_enc, dtype=torch.float)
     ads_graph = Data(x=x, edge_index=edge_index)
     plotter(ads_graph)
-    plt.show()
+    #plt.show()
+    time0 = time.time()
+    E_adsorbate = model.evaluate(adsorbate_graph)
     E_ensemble = model.evaluate(ads_graph)
-    E_molecule = model.evaluate(adsorbate)
-    E_adsorption = E_ensemble - E_molecule
+    E_adsorption = E_ensemble - E_adsorbate
+    gnn_time = time.time() - time0
     print("-----------------------------------")
     print("-----------GNN PREDICTION----------")
     print("-----------------------------------")
-    print("GNN ensemble energy = {:.2f} eV (PBE + VdW)".format(E_ensemble))
-    print("GNN molecule energy = {:.2f} eV (PBE + VdW)".format(E_molecule))
-    print("GNN adsorption energy = {:.2f} eV".format(E_adsorption))
+    print("System: {} on {}-({})".format(adsorbate.capitalize(), metal.capitalize(), surf(metal.capitalize())))
+    print("Ensemble energy = {:.2f} eV (PBE + VdW)".format(E_ensemble))
+    print("Molecule energy = {:.2f} eV (PBE + VdW)".format(E_adsorbate))
+    print("Adsorption energy = {:.2f} eV".format(E_adsorption))
+    print("Execution time = {:.2f} ms".format(gnn_time *1000.0))
     
     
 

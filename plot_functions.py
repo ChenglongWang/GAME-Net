@@ -338,3 +338,84 @@ def DFT_kdeplot(fg_dataset):
     # ax.spines['bottom'].set_linewidth(1.5)
     # ax.spines['left'].set_linewidth(1.5)
     return fig, ax
+
+def E_violinplot_train_gif(model, loader, std_tv, dataset_labels, epoch):
+    """Generate Violinplot during training
+    Args:
+        model (_type_): GNN model instantiation
+        loader (_type_): DataLoader
+        std_tv (_type_): standard deviation of the train+val dataset
+    """
+    family_dict = {}
+    error_dict = {}
+    error_list = []
+    family_list = []
+    fig, ax = plt.subplots(figsize=(8/2.54, 4.94/2.54), dpi=400)
+    params = {'mathtext.default': 'regular' }          
+    plt.rcParams.update(params)
+    x = "$\mathit{E}_{GNN}-\mathit{E}_{DFT}$ / eV"
+    for label in dataset_labels:
+        checker = lambda x: x.family == label
+        family_dict[label] = list(filter(checker, loader.dataset)) 
+        error = np.zeros(len(family_dict[label]))
+        y_GNN = np.zeros(len(family_dict[label]))
+        family_loader = DataLoader(family_dict[label], batch_size=len(family_dict[label]), shuffle=False)
+        for batch in family_loader:
+            batch.to("cuda")
+            y_GNN = model(batch)
+        y_GNN = y_GNN.detach().cpu().numpy()           
+        for i in range(len(family_dict[label])): 
+            y_DFT = family_dict[label][i].y           
+            error[i] = -(y_DFT - y_GNN[i]) * std_tv
+        error_dict[label] = list(error)
+        for item in error_dict[label]:
+            error_list.append(item) 
+    for label in dataset_labels:
+        for i in range(len(error_dict[label])):
+            family_list.append(label)
+    df = pd.DataFrame(data={x: np.asarray(error_list, dtype=float), "Chemical family": family_list})
+    custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+    sns.set_theme(style="ticks", rc=custom_params)
+    order = ["$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}O_{(2,3)}$", "$C_{x}H_{y}N$", "$C_{x}H_{y}S$", "Amidines", "Amides",
+             "Oximes", "Carbamates", "Aromatics"]
+    ax = sns.violinplot(y=x, x="Chemical family", data=df, orient="v",
+                        scale="width", linewidth=0.5, palette="pastel",
+                        bw="scott", zorder=1, order=order)     
+    ax.set_xlim([-0.5, 8.5])  
+    ax.set_ylim([-2.5, 2.5])
+    plt.xticks(rotation=45, ha='right', rotation_mode='anchor')
+    plt.tick_params(axis='x', which='both', bottom=False)
+    ax.set_xlabel(None)
+    #ax.set_xticklabels([]) # Comment this line if you want to display the family names!
+    ax.hlines(0, -1, 10, linestyles="dotted", zorder=0, lw=0.5, color="black")
+    ax.yaxis.set_major_locator(MaxNLocator(5)) 
+    #ax.text(0.05, 0.95, "epoch {}".format(epoch), transform=ax.transAxes, verticalalignment='top')
+    plt.ioff()
+    return fig, ax
+
+def training_plot_gif(train: list, val: list, test: list):
+    """Returns the plot of the learning process (MAE vs Epoch).
+
+    Args:
+        train (list): _description_
+        val (list): _description_
+        test (list): _description_
+    """
+    epochs = list(range(len(train)))
+    for item in epochs:
+        item += 1
+    fig, ax = plt.subplots(figsize=(15/2.54, 10/2.54), dpi=400, layout="constrained")
+    ax.plot(epochs, train, label="Train", lw=2, color="#5fbcd3ff")
+    ax.plot(epochs, [val[i] for i in range(len(val))], label="Validation", lw=2, color="#de8787ff")
+    ax.plot(epochs, test, label="Test", lw=2, color="#ffd42aff")
+    ax.yaxis.set_major_locator(MaxNLocator(5)) 
+    ax.set_xlabel("Epoch", fontsize=18)
+    ax.set_xlim([-1, 201])
+    ax.set_ylabel("MAE / eV", fontsize=18)
+    ax.set_ylim([0.0, 2.5])
+    ax.legend(fontsize=12)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    #ax.grid()
+    plt.ioff()
+    return fig, ax    

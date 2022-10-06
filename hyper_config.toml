@@ -2,16 +2,16 @@
 
 [graph]
 
-voronoi_tol = 0.38        # Applied to all pairs of elements
-scaling_factor = 1.28      # For atomic radii of metals
-second_order_nn = true    # Whether to comprise also the NNs of the metals direclt interacting with the adsorbate
+voronoi_tol = 0.5        # Applied to all pairs of elements
+scaling_factor = 1.5      # For atomic radii of metals
+second_order_nn = false    # Whether to comprise also the NNs of the metals direclt interacting with the adsorbate
 
 [train]  # Training related: All hyperparams except architecture-related ones
 
 splits = 10                 # Initial splits of the starting dataset for train/val/test sets creation
 test_set = true             # whether generate test set or just split among train/val
-batch_size = 18             
-epochs = 10
+batch_size = 16             
+epochs = 200
 target_scaling = "std"      # Target scaling approach
 loss_function = "mae"       # Loss function of the training
 lr0 = 1e-3                  # Initial learning rate (lr)
@@ -30,9 +30,9 @@ bias = false                # Whether allowing bias in all layer formulas
 n_linear = 3                # Number of fully connected layers
 n_conv = 3                  # Number of convolutional layers
 conv_layer = "SAGE"          # Convolutional layer
-adj_conv = true             # Whether adjust convolutional layer with fully connected one just before
+adj_conv = false             # Whether adjust convolutional layer with fully connected one just before
 conv_normalize = false      
-conv_root_weight = false
+conv_root_weight = true
 pool_layer = "GMT"       # Pooling layer
 pool_ratio = 0.25           # Poling ratio params for GMT
 pool_heads = 2                            
