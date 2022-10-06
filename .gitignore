@@ -11,7 +11,9 @@ __pycache__/
 Data/
 BM_dataset/
 Hyperparameter_Optimization/
-Models/
+!Models/
+Models/*
+!Models/LONG_NIGHT_full
 Performance_BMdataset/
 Tests/
 
