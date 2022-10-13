@@ -66,11 +66,11 @@ Within this mode, you can choose among two available ways to use the GNN:
 
 # Authors
 
-Santiago Morandi, Ph.D. Student, López group (ICIQ, Spain)  
-Sergio Pablo-García, Ph.D. Student, López Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
+Eng. Santiago Morandi, Ph.D. student, López group (ICIQ, Spain)  
+Dr. Sergio Pablo-García, postdoc in the Aspuru-Guzik group (UoT, Canada)
 # Contributors
 
-Zarko Ivkovic, M.Sc. Student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
+Zarko Ivkovic, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
 
 # License
 
