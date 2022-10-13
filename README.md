@@ -1,7 +1,7 @@
 # Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks
 
 <p align="center">
-    <img src="./GNN.gif" width="60%" height="60%"/>
+    <img src="./Media/GNN.gif" width="60%" height="60%"/>
 </p>
 
 This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks". The Graph Neural Networks (GNNs) developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
@@ -58,23 +58,22 @@ Within this mode, you can opt among two different options:
 
 1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main scripts and files you will work with are `GNNvsDFT.ipynb` and `GNNvsDFT.ipynb`.
 
-2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, an interactive script connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adjusted adsorption energy. 
+2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the "Media" directory. 
 
     `python interactive_graph_creator.py`
-### Training mode (unavailable until data are out of embargo)
+### Training mode
 
-The DFT datasets and the models are stored open-access [here](). The DFT datasets are also uploaded to ioChem-BD [doi]().
+The DFT datasets are stored in [ioChem-BD](), and the needed samples for the GNN are in the FG_dataset folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
-1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file. Once created, just type: 
+1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file. Once created, type: 
 
     `python train_GNN.py -i hyper_config.toml`
 
     To check the documentation of the script, type `python train_GNN.py -help`.
-2. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `long_night` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (each GPU partitioned in two), type:
+2. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
 
-    `python hypopt_GNN.py -o long_night -s 2000 -gr 15 -gpt 0.5`
-
+    `python hypopt_GNN.py -o hypopt_test -s 2000 -gr 15 -gpt 0.5`
 
 # Authors
 
@@ -94,5 +93,5 @@ In case you need help or are interested in contributing, feel free to contact us
 # Acknowledgements
 
 <p align="center">
-    <img src="./ack_repo.png"/>
+    <img src="./Media/ack_repo.png"/>
 </p>
