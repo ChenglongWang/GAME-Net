@@ -1,15 +1,15 @@
 # Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks
 
 <p align="center">
-    <img src="./Media/GNN.gif" width="60%" height="60%"/>
+    <img src="./Media/GNN.gif" width="50%" height="50%"/>
 </p>
 
-This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks". The Graph Neural Networks (GNNs) developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
+This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", [doi](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
 - All gas-phase closed-shell molecules containing C, H, O, N and S.
 - Adsorption systems: Same molecules mentioned above on the following 12 metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
-The framework is built on top of [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://pytorch-geometric.readthedocs.io/en/latest/index.html).
+The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation
 
 1. Clone the repo from GitLab. Open a terminal and use the following command:  
@@ -31,39 +31,28 @@ The framework is built on top of [PyTorch](https://pytorch.org/) and [PyTorch Ge
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
 
-<!-- 4. Create the following empty folders in the repo: 
-
-    `mkdir Data Models Hyperparameter_Optimization`
-
-    As the names suggest, `Data` will store the DFT datasets used to train the GNNs in case you will work in *training mode* (see below), while `Models` will contain the different GNN models stored in [Zenodo](https://www.zenodo.org/) if you choose to work in *inference mode* (see below), or the models you will create if you work in training mode otherwise. `Hyperparameter_Optimization` will store the results of the tuning process. -->
-
-4. Download the raw DFT datasets: The FG-dataset must be stored in the folder `Data`. **N.B. The Datasets will remain on embargo until final publication. Once published, the data will be available both in iochem-BD and here**.
-
-<!-- 5. Download the GNN models from Zenodo: They must be stored in the folder `Models`. -->
-
-Done! In theory now everything is set up to start playing with the GNN framework!
+Done! In theory now everything is set up to start interacting with the GNN framework!
 
 ## Usage
 
-You have two possible choices for interacting with the GNN framework:
+You have two possible choices for using the GNN framework:
 
-- **Inference mode**: Most likely, you are a curious person and want to probe the performance of the GNN models compared to your DFT simulations. In this case, you will test the pre-trained models developed by us, without going deeper in the details behind the models' generation process and without accessing the DFT data used to train them. 
+- **Inference mode**: Most likely, you are a curious person and want to probe the performance of the GNN models compared to your DFT simulations. In this case, you will test the models developed by us, without going deeper in the details behind the models' creation process and without accessing the DFT data used to train them. 
 
-- **Training mode**: You will go through all the steps defined in the workflow for the GNN model generation process. In this case you will need the raw DFT datasets for training the GNN. Within this mode, you can train your own models with the preferred hyperparameter setting and model architecture, or, if you have enough computational resources, you can perform hyperparameter tuning with the workflow based on [Ray Tune](https://docs.ray.io/en/latest/tune/index.html). 
-**N.B. This mode is unavailable until final publication, as data are on embargo.**
+- **Training mode**: You will go through all the steps defined in the workflow for the model generation process. In this case you will need the raw DFT datasets for training the GNN. Within this mode, you can train your own models with the preferred hyperparameter setting and model architecture, or, if you have enough computational resources, you can perform hyperparameter tuning with the workflow based on [Ray Tune](https://docs.ray.io/en/latest/tune/index.html). 
 
 ### Inference mode
 
-Within this mode, you can opt among two different options:
+Within this mode, you can opt between two different options:
 
-1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main scripts and files you will work with are `GNNvsDFT.ipynb` and `GNNvsDFT.ipynb`.
+1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main scripts and files you will work with are `GNNvsDFT.py` and `GNNvsDFT.ipynb`.
 
 2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the "Media" directory. 
 
     `python interactive_graph_creator.py`
 ### Training mode
 
-The DFT datasets are stored in [ioChem-BD](), and the needed samples for the GNN are in the FG_dataset folder.
+The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the FG_dataset folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
 1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file. Once created, type: 
@@ -81,7 +70,7 @@ Santiago Morandi, Ph.D. Student, López group (ICIQ, Spain)
 Sergio Pablo-García, Ph.D. Student, López Group (ICIQ, Spain), now postdoc in the Aspuru-Guzik group (UoT, Canada)
 # Contributors
 
-Zarko Ivkovic, M.Sc. Student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of the DFT dataset and interface testing.
+Zarko Ivkovic, M.Sc. Student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
 
 # License
 
