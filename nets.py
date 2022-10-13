@@ -1,12 +1,12 @@
 """Module containing the Graph Neural Network architectures."""
 
-__author__ = "Santiago Morandi"
-
 import torch
 from torch.nn import Linear, GRU 
 from torch_geometric.nn import Set2Set, CGConv, Set2Set, SAGEConv, GraphMultisetTransformer
 import torch.nn.functional as F
 from torch_geometric.data import Data
+# from pyJoules.energy_meter import measure_energy
+# from pyJoules.device.rapl_device import RaplCoreDomain
 
 from constants import NODE_FEATURES
 from functions import get_graph_conversion_params, get_mean_std_from_model
@@ -239,8 +239,10 @@ class PreTrainedModel():
         "Container class for loading pre-trained GNN models"
         self.model_name = model_name
         self.model_path = "./Models/{}/".format(model_name)
-        self.model = torch.load("{}/model.pth".format(self.model_path))
-        self.model.load_state_dict(torch.load("{}GNN.pth".format(self.model_path)))
+        self.model = torch.load("{}/model.pth".format(self.model_path),
+                                map_location=torch.device("cpu"))
+        self.model.load_state_dict(torch.load("{}GNN.pth".format(self.model_path), 
+                                              map_location=torch.device("cpu")))
         self.model.eval()  # Inference mode
         self.model.to("cpu")
         # Load scaling parameters
@@ -248,6 +250,7 @@ class PreTrainedModel():
         # Load graph conversion parameters
         self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(self.model_path)
     
+    # @measure_energy(domains=[RaplCoreDomain(0)])
     def evaluate(self, graph: Data) -> float:
         "Evaluate graph energy in eV"
         return self.model(graph).item() * self.std + self.mean

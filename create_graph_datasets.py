@@ -2,9 +2,14 @@
 
 import argparse
 import toml
+from pyJoules.energy_meter import measure_energy
+from pyJoules.device.rapl_device import RaplCoreDomain
 
-from functions import get_tuples, export_tuples, geometry_to_graph_analysis
+from functions import get_tuples, export_tuples, geometry_to_graph_analysis, get_id
+from paths import create_paths
+from constants import FG_RAW_GROUPS
 
+@measure_energy(domains=[RaplCoreDomain(0)])
 def create_graph_datasets(graph_settings: dict, 
                           paths_dict: dict):
     """Convert raw DFT data into pre-processed graph datasets.
@@ -45,4 +50,6 @@ def create_graph_datasets(graph_settings: dict,
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="Convert raw DFT datasets into graph representations with the parameters provided in config.toml.")
     params = toml.load("config.toml")["graph_params"]
-    create_graph_datasets(params["voronoi_tol"], params["second_order_nn"], params["scaling_factor"])
+    graph_identifier = get_id(params)
+    family_paths = create_paths(FG_RAW_GROUPS, "/home/santiago/Desktop/GNN/FG_dataset", graph_identifier)
+    create_graph_datasets(params, family_paths)

@@ -35,6 +35,8 @@ METALS = ['Ag', 'Au', 'Cd', 'Cu',
 NODE_FEATURES = len(MOL_ELEM) + len(METALS)
 ENCODER = OneHotEncoder().fit(np.array(MOL_ELEM + METALS).reshape(-1, 1))  
 ELEMENT_LIST = list(ENCODER.categories_[0])                                
+FULL_ELEM_LIST = METALS + MOL_ELEM
+FULL_ELEM_LIST.sort()
 
 # Name of chemical families included in the dataset
 FG_RAW_GROUPS = ["amides", "amidines", "group2", "group2b",

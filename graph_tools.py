@@ -1,6 +1,4 @@
-"""Module containing functions for handling and visualization purposes."""
-
-__author__ = "Santiago Morandi"
+"""Module containing functions for graphs handling and visualization purposes."""
 
 from pyRDTP.data.colors import rgb_colors
 import numpy as np
@@ -10,17 +8,14 @@ import torch_geometric
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
 
-from constants import METALS, MOL_ELEM, NODE_FEATURES
+from constants import FULL_ELEM_LIST
 from functions import get_graph_formula
-
-complete_list = METALS + MOL_ELEM
-complete_list.sort()
 
 def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     """
-    Convert graph object from pytorch_geometric to networkx type.    
+    Convert graph in pytorch_geometric format to networkx type.    
     For each node in the graph, the label corresponding to the atomic species 
-    is added as attribute.
+    is added as attribute together with a color.
     Args:
         graph(torch_geometric.data.Data): torch_geometric graph object.
     Returns:
@@ -31,15 +26,14 @@ def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     atom_list = []
     for i in range(n_nodes):
         index = np.where(node_features_matrix[i,:] == 1)[0][0]
-        atom_list.append(complete_list[index])
+        atom_list.append(FULL_ELEM_LIST[index])
     g = torch_geometric.utils.to_networkx(graph, to_undirected=True)
     connections = list(g.edges)
-    new_g = networkx.Graph()
-    # Node attributes: chemical element + associated color
+    nx_graph = networkx.Graph()
     for i in range(n_nodes):
-        new_g.add_node(i, atom=atom_list[i], rgb=rgb_colors[atom_list[i]])
-    new_g.add_edges_from(connections, minlen=2)
-    return new_g
+        nx_graph.add_node(i, atom=atom_list[i], rgb=rgb_colors[atom_list[i]])
+    nx_graph.add_edges_from(connections, minlen=2)
+    return nx_graph
 
 def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     """
@@ -50,7 +44,7 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
         new_g(torch_geometric.data.Data): torch_geometric graph object        
     """
 
-def plotter(graph,
+def plotter(graph: Data,
             node_size: int=400,
             font_color: str="white",
             font_weight: str="bold",
@@ -62,25 +56,58 @@ def plotter(graph,
             dpi: int=600,
             figsize: tuple[int, int]=(4,4)):
     """
-    Plot graph with atom labels and colors. 
+    Visualize graph with atom labels and colors. 
     Kamada_kawai_layout engine is applied as it gives the best visualization appearance.
     Args:
-        graph(torch_geometric.data.Data): graph object of the chemical ensemble.
+        graph(torch_geometric.data.Data): graph object in pyG format.
     """
     graph = convert_gpytorch_to_networkx(graph)
     labels = networkx.get_node_attributes(graph, 'atom')
     colors = list(networkx.get_node_attributes(graph, 'rgb').values()) 
     plt.figure(figsize=figsize, dpi=dpi) 
     networkx.draw_networkx(graph, 
-                     labels=labels, 
-                     node_size=node_size,
-                     font_color=font_color, 
-                     font_weight=font_weight,
-                     node_color=colors, 
-                     alpha=alpha, 
-                     arrowsize=arrowsize, 
-                     width=width,
-                     pos=networkx.kamada_kawai_layout(graph))                    
+                           labels=labels, 
+                           node_size=node_size,
+                           font_color=font_color, 
+                           font_weight=font_weight,
+                           node_color=colors, 
+                           alpha=alpha, 
+                           arrowsize=arrowsize, 
+                           width=width,
+                           pos=networkx.kamada_kawai_layout(graph))
+    plt.draw()                    
+
+def visualize_graph(graph: Data,
+            node_size: int=400,
+            font_color: str="white",
+            font_weight: str="bold",
+            alpha: float=0.9, 
+            arrowsize: int=10,
+            width: float=1.2,
+            k: float=0.01,
+            scale: float=1,
+            dpi: int=600,
+            figsize: tuple[int, int]=(4,4)):
+    """
+    Visualize graph with atom labels and colors. 
+    Kamada_kawai_layout engine is applied as it gives the best visualization appearance.
+    Args:
+        graph(torch_geometric.data.Data): graph object in pyG format.
+    """
+    graph = convert_gpytorch_to_networkx(graph)
+    labels = networkx.get_node_attributes(graph, 'atom')
+    colors = list(networkx.get_node_attributes(graph, 'rgb').values()) 
+    networkx.draw_networkx(graph, 
+                           labels=labels, 
+                           node_size=node_size,
+                           font_color=font_color, 
+                           font_weight=font_weight,
+                           node_color=colors, 
+                           alpha=alpha, 
+                           arrowsize=arrowsize, 
+                           width=width,
+                           pos=networkx.kamada_kawai_layout(graph))
+    plt.draw()    
     
 def extract_adsorbate(graph: Data) -> Data:
     """Extract molecule from the adsorption configuration graph,
@@ -120,7 +147,7 @@ def extract_adsorbate(graph: Data) -> Data:
             edge_index.append(link)
         switch = 0
     # 3) Graph construction
-    x = torch.zeros((len(node_list), NODE_FEATURES))
+    x = torch.zeros((len(node_list), len(FULL_ELEM_LIST)))
     edge = torch.zeros((2, len(edge_index)))
     for i in range(x.shape[0]):
         x[i, :] = node_list[i]
@@ -144,7 +171,7 @@ def get_number_atoms(graph: Data, atom: str) -> int:
         index = formula.find(atom)
         return int(formula[index+1])
     else:
-        return "The defined element is not present in the system under study"
+        return "The defined element is not present in the graph."
     
 
 

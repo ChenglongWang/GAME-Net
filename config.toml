@@ -1,8 +1,8 @@
 [graph_params]  # Parameters for graph representation
 
-voronoi_tol = 0.5
-scaling_factor = 1.5
-second_order_nn = true
+voronoi_tol = 0.6
+scaling_factor = 1.2
+second_order_nn = false
 
 [data]  # Path to folder "Data" containing DFT raw data
 

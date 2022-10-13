@@ -6,6 +6,7 @@ import time
 
 import torch 
 import toml
+#import matplotlib.pyplot as plt
 
 from functions import create_loaders, scale_target, train_loop, test_loop, get_id
 from nets import FlexibleNet
@@ -14,6 +15,8 @@ from create_graph_datasets import create_graph_datasets
 from constants import FG_RAW_GROUPS, loss_dict, pool_seq_dict, conv_layer, sigma_dict, pool_dict
 from paths import create_paths
 from processed_datasets import create_post_processed_datasets
+#from plot_functions import E_violinplot_train_gif, training_plot_gif
+#from constants import FG_FAMILIES
 
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="Perform a training process with the provided hyperparameter settings.")
@@ -110,6 +113,11 @@ if __name__ == "__main__":
         loss_list.append(loss)
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
+        
+        # fig, ax = E_violinplot_train_gif(model, test_loader, std, set(FG_FAMILIES), epoch)
+        # plt.savefig("./gif/violin_{}.png".format(epoch), dpi=400, bbox_inches='tight')
+        # fig, ax = training_plot_gif(train_list, val_list, test_list)
+        # plt.savefig("./gif/parity_{}.png".format(epoch), dpi=400, bbox_inches='tight')
     print("-----------------------------------------------------------------------------------------")
     training_time = (time.time() - t0)/60  
     print("Training time: {:.2f} min".format(training_time))
