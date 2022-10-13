@@ -18,7 +18,7 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
     
     You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo: You should find the file `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for the new environment (we will use `GNN` here) and type the command:  
+2. Create a conda environment. Enter the repo: You should find the file `GNN_env.txt`: It contains all the information about the packages needed to create the environment for the GNN framework. Choose a name for the new environment (we use `GNN` here) and type the command:  
 
     `conda create --name GNN --file GNN_env.txt`  
     
@@ -66,8 +66,8 @@ Within this mode, you can choose among two available ways to use the GNN:
 
 # Authors
 
-Eng. Santiago Morandi, Ph.D. student, López group (ICIQ, Spain)  
-Dr. Sergio Pablo-García, postdoc in the Aspuru-Guzik group (UoT, Canada)
+Eng. Santiago Morandi, doctoral researcher, López group (ICIQ, Spain)  
+Dr. Sergio Pablo-García, postdoctoral researcher, The Matter Lab (UoT, Canada)
 # Contributors
 
 Zarko Ivkovic, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
