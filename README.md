@@ -4,10 +4,10 @@
     <img src="./Media/GNN2.gif" width="60%" height=60%"/>
 </p>
 
-This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", [doi](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
+This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", [doi](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
 - All gas-phase closed-shell molecules containing C, H, O, N and S.
-- Adsorption systems: Same molecules mentioned above on the following 12 metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
+- Adsorption systems: Same molecules mentioned above on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation
@@ -55,7 +55,7 @@ Within this mode, you can opt between two different options:
 The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the FG_dataset folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
-1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file. Once created, type: 
+1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file. Once created, type: 
 
     `python train_GNN.py -i hyper_config.toml`
 

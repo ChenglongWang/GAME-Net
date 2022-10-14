@@ -1,6 +1,4 @@
-"""Python script for the direct comparison of the GNN performance compared to the DFT."""
-
-__author__ = "Santiago Morandi"
+"""Script for the direct comparison of the GNN performance compared to DFT."""
 
 import argparse
 
@@ -19,11 +17,11 @@ if __name__ == "__main__":
     PARSER.add_argument("-f", "--family", type=str, default=None, dest="family", 
                         help="Tag for the graph object")
     PARSER.add_argument("-sm", "--surface-multiplier", type=int, default=None, dest="sm", 
-                        help="Surface multiplier in the case the slab is an extension of the empty slab given as input.")
+                        help="Surface multiplier in the case the slab is an extension of the slab given as input.")
     ARGS = PARSER.parse_args()
     
-    # 1) Load pre-trained GNN model 
-    model = PreTrainedModel("./Models/{}/".format(ARGS.model))
+    # 1) Load pre-trained GNN model on CPU
+    model = PreTrainedModel(ARGS.model)
     
     # 2) Convert input DFT sample to graph object
     graph = get_graph_sample(ARGS.input, ARGS.slab,
