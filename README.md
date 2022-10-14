@@ -6,8 +6,8 @@
 
 This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", [doi](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
-- All gas-phase closed-shell molecules containing C, H, O, N and S.
-- Adsorption systems: Same molecules mentioned above on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
+- All closed-shell molecules containing C, H, O, N and S.
+- Same molecules mentioned above adsorbed on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation
@@ -31,11 +31,11 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
 
-Done! In theory now everything is set up to start interacting with the GNN framework!
+Done! In theory now everything is set up to start playing with the GNN framework!
 
 ## Usage
 
-You have two possible choices for using the GNN framework:
+You have two possible modes:
 
 - **Inference mode**: Most likely, you are a curious person and want to probe the performance of the GNN models compared to your DFT simulations. In this case, you will test the models developed by us, without going deeper in the details behind the models' creation process and without accessing the DFT data used to train them. 
 
@@ -47,12 +47,12 @@ Within this mode, you can opt between two different options:
 
 1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main scripts and files you will work with are `GNNvsDFT.py` and `GNNvsDFT.ipynb`.
 
-2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the "Media" directory. 
+2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the `Media` directory. 
 
     `python interactive_graph_creator.py`
 ### Training mode
 
-The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the FG_dataset folder.
+The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `FG_dataset` folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
 1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file. Once created, type: 
