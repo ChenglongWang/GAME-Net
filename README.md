@@ -26,7 +26,7 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
 
 3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), a package at the base of the framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command) and install it with pip:  
 
-    `git clone --branch experimental https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
+    `git clone https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
     `pip install pyrdtp`
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
@@ -45,22 +45,22 @@ You have two possible modes:
 
 Within this mode, you can opt between two different options:
 
-1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main scripts and files you will work with are `GNNvsDFT.py` and `GNNvsDFT.ipynb`.
+1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
 2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the `Media` directory. 
 
     `python interactive_graph_creator.py`
 ### Training mode
 
-The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `FG_dataset` folder.
+The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `data/FG_dataset` folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
 1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file. Once created, type: 
 
     `python train_GNN.py -i hyper_config.toml`
 
-    To check the documentation of the script, type `python train_GNN.py -help`.
-2. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
+    To check the documentation of the script, type `python train_GNN.py --help`.
+2. (FIXING) Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
 
     `python hypopt_GNN.py -o hypopt_test -s 2000 -gr 15 -gpt 0.5`
 
