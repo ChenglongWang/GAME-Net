@@ -1,7 +1,7 @@
 # Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks
 
 <p align="center">
-    <img src="./Media/GNN2.gif" width="60%" height=60%"/>
+    <img src="./media/GNN2.gif" width="60%" height=60%"/>
 </p>
 
 This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", [doi](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
@@ -82,5 +82,5 @@ In case you need help or are interested in contributing, feel free to contact us
 # Acknowledgements
 
 <p align="center">
-    <img src="./Media/ack_repo.png"/>
+    <img src="./media/ack_repo.png"/>
 </p>

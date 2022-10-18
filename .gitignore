@@ -2,20 +2,10 @@
 
 # Ignore all figures in the root
 
-/*.svg
-/*.png
-!ack_repo.png
 Images/
-Manuscript/
 __pycache__/
-Data/
-BM_dataset/
-Hyperparameter_Optimization/
-!Models/
-Models/*
-!Models/LONG_NIGHT_full
-Performance_BMdataset/
-Tests/
+pyproject.toml
+setup.cfg
 
 /*.csv
 .vscode/settings.json
