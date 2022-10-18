@@ -27,7 +27,11 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
 3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), a package at the base of the framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command) and install it with pip:  
 
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
-    `pip install pyrdtp`
+    `pip install pyrdtp/`
+
+4. Install Chemspipy and toml:
+
+    `pip install chemspipy toml`
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
 
