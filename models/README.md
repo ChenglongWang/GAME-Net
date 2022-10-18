@@ -1,6 +1,6 @@
 # Models directory
 
-This directory stores all the GNN models that have been generated and that are created everytime you perform a GNN model training via the script `train_GNN.py`.
+This directory stores all the GNN models that are created when you perform a GNN model training with the script `train_GNN.py`.
 
 Each model folder contains at least the following files:
 
@@ -8,4 +8,4 @@ Each model folder contains at least the following files:
 2. `GNN.pth`: it stores the model parameters.
 3. `performance.txt`: summary of the performed model training.
 
-In order to load each model, use the `PreTrainedModel` class present in `gnn_eads.nets` module.
+In order to load each model, use the `PreTrainedModel` class present in `gnn_eads.nets` module (See `notebooks` directory for details).
