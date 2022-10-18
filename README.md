@@ -29,11 +29,11 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
     `pip install pyrdtp/`
 
-4. Install Chemspipy and toml:
+4. Install Chemspipy and toml (needed for the scripts):
 
     `pip install chemspipy toml`
 
-    To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
+    To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp, chemspipy and toml in the list.
 
 Done! In theory now everything is set up to start playing with the GNN framework!
 
