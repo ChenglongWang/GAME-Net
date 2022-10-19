@@ -1,9 +1,13 @@
 # FG-dataset
 
-This directory contains the FG-dataset divided by chemical family. Each directory contains the following files:
+This directory contains the FG-dataset divided by chemical family. Some notes:
 
-1. `structures` folder containing the DFT optimized geometries in VASP CONTCAR format. The file names follow the convention `xx-CHOZ-a.contcar`, where `xx` is the metal symbol, `C`, `H` and `O` are the number of atoms of each element in the adsorbate, `Z` is used progressively from 1 to 9/a,b,c to represent different isomers. the final letter `-a` refers to the adsorption configuration. When the molecules do not contain O or contain multiple heteroatoms, the `O` is replaced by a different symbol. Example: `ag-1401-a` is methane adsorbed on silver, `ru-03N1-a` is ammonia adsorbed on ruthenium. 
+- For each functional group, all the corresponding molecules containing up to 4 carbon atoms have been included (except the aromatic rings).
+- `group2` and `group2b` include the organic molecules containing 0/1 O atoms: alkanes, alkenes, alkynes, alcohols, aldehydes, ketones and ethers.
+- `group3S` contains molecules with one S atom: thiols, thials, thioketones and thioethers.
+- `group3N` contains molecules with one N atom: amines and imines.
+- `group4` contains molecules with 2/3 O atoms: carbonates, carboxylic acids and esters.
+- `aromatics` and `aromatics2` include aromatic molecules with one and two rings respectively. These are the only two families that include molecules with more than 4 C atoms.
+- `metal_surfaces` include the lowest-energy slabs used for adsorbing all the molecules of the FG-dataset. 8 fcc (111) slabs and 4 hcp (0001) metals.
 
-2. `energies.dat`: listing the ground state energy got from DFT for all the samples in eV. 
 
-These are the essential data needed at the beginning. All the remaining files are created when the raw data are converted to graphs.
