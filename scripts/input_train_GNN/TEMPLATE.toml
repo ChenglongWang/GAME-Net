@@ -41,5 +41,5 @@ pool_layer_norm = false
 
 [data]  # Absolute path to your training data folder (FG-dataset)
 
-root = "/home/santiago/Desktop/GNN/data/FG_dataset"
+root = "/home/santiago/Desktop/GNN/data/FG_dataset"  # Absolute path to FG_dataset folder
 
