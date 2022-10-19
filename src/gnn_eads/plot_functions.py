@@ -11,6 +11,7 @@ from sklearn.metrics import r2_score
 from gnn_eads.functions import split_percentage
 from gnn_eads.constants import DPI
 
+
 def hist_num_atoms(n_list:list[int]):
     fig, ax = plt.subplots(figsize=(8/2.54, 4.94/2.54), dpi=DPI)
     ax.bar(*np.unique(n_list, return_counts=True), color="#219ebc")
@@ -23,6 +24,7 @@ def hist_num_atoms(n_list:list[int]):
     ax.spines['left'].set_color(zoomcol)
     plt.ioff()
     return fig, ax
+
 
 def violinplot_family(model, loader, std_tv, dataset_labels, device="cpu"):
     """Generate Violinplot sorted by chemical family
@@ -80,6 +82,7 @@ def violinplot_family(model, loader, std_tv, dataset_labels, device="cpu"):
     plt.ioff()
     return fig, ax  
 
+
 def E_violinplot_train(model, loader, std_tv, dataset_labels, epoch):
     """Generate Violinplot during training
     Args:
@@ -133,6 +136,7 @@ def E_violinplot_train(model, loader, std_tv, dataset_labels, epoch):
     ax.text(0.05, 0.95, "epoch {}".format(epoch), transform=ax.transAxes, verticalalignment='top')
     plt.ioff()
     return fig, ax    
+
 
 def DFTvsGNN_plot(model, loader, mean_tv, std_tv):
     """Generate plot of GNN prediction vs true DFT data.
@@ -195,6 +199,7 @@ def DFTvsGNN_plot(model, loader, mean_tv, std_tv):
     plt.ioff()
     return fig, ax
 
+
 def DFTvsGNN_plot_train(model, loader, mean_tv, std_tv, epoch):
     """Generate parity plot of GNN prediction vs DFT data.
 
@@ -240,6 +245,7 @@ def DFTvsGNN_plot_train(model, loader, mean_tv, std_tv, epoch):
     ax.annotate(info, [0.60, 0.15], xycoords='axes fraction')  
     plt.ioff()
     return fig, ax
+
 
 def pred_real(model,
               train_loader: DataLoader,
@@ -292,6 +298,7 @@ def pred_real(model,
     plt.ioff()
     return fig, ax1, ax2, ax3
 
+
 def training_plot(train: list, val: list, test: list, split: int):
     """Returns the plot of the learning process (MAE vs Epoch).
 
@@ -319,6 +326,7 @@ def training_plot(train: list, val: list, test: list, split: int):
     plt.ioff()
     return fig, ax    
 
+
 def DFT_kdeplot(fg_dataset):
     g_list = []
     for dataset in fg_dataset:
@@ -338,6 +346,7 @@ def DFT_kdeplot(fg_dataset):
     # ax.spines['bottom'].set_linewidth(1.5)
     # ax.spines['left'].set_linewidth(1.5)
     return fig, ax
+
 
 def E_violinplot_train_gif(model, loader, std_tv, dataset_labels, epoch):
     """Generate Violinplot during training
@@ -392,6 +401,7 @@ def E_violinplot_train_gif(model, loader, std_tv, dataset_labels, epoch):
     #ax.text(0.05, 0.95, "epoch {}".format(epoch), transform=ax.transAxes, verticalalignment='top')
     plt.ioff()
     return fig, ax
+
 
 def training_plot_gif(train: list, val: list, test: list):
     """Returns the plot of the learning process (MAE vs Epoch).

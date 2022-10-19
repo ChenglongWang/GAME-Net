@@ -1,10 +1,11 @@
 """Script for the direct comparison of the GNN performance compared to DFT."""
 
 import argparse
-import matplotlib.pyplot as plt
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/gnn_eads')))
+
+import matplotlib.pyplot as plt
 
 from gnn_eads.functions import get_graph_sample
 from gnn_eads.graph_tools import visualize_graph

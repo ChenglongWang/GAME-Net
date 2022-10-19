@@ -1,15 +1,16 @@
-"""Module containing functions for graphs handling and visualization purposes."""
+"""Functions for graphs handling and visualization purposes."""
 
 from pyRDTP.data.colors import rgb_colors
 import numpy as np
 import networkx
-import torch 
+import torch
 import torch_geometric
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
 
 from gnn_eads.constants import FULL_ELEM_LIST
 from gnn_eads.functions import get_graph_formula
+
 
 def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     """
@@ -35,6 +36,7 @@ def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     nx_graph.add_edges_from(connections, minlen=2)
     return nx_graph
 
+
 def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     """
     Convert graph object from networkx to pytorch_geometric type.
@@ -43,6 +45,7 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     Returns:
         new_g(torch_geometric.data.Data): torch_geometric graph object        
     """
+
 
 def plotter(graph: Data,
             node_size: int=400,
@@ -57,7 +60,7 @@ def plotter(graph: Data,
             figsize: tuple[int, int]=(4,4)):
     """
     Visualize graph with atom labels and colors. 
-    Kamada_kawai_layout engine is applied as it gives the best visualization appearance.
+    Kamada_kawai_layout engine gives the best visualization appearance.
     Args:
         graph(torch_geometric.data.Data): graph object in pyG format.
     """
@@ -76,6 +79,7 @@ def plotter(graph: Data,
                            width=width,
                            pos=networkx.kamada_kawai_layout(graph))
     plt.draw()                    
+
 
 def visualize_graph(graph: Data,
             node_size: int=400,
@@ -108,7 +112,8 @@ def visualize_graph(graph: Data,
                            width=width,
                            pos=networkx.kamada_kawai_layout(graph))
     plt.draw()    
-    
+
+
 def extract_adsorbate(graph: Data) -> Data:
     """Extract molecule from the adsorption configuration graph,
     removing metals and connections between metal and molecule.
@@ -116,7 +121,7 @@ def extract_adsorbate(graph: Data) -> Data:
     Args:
         graph (torch_geometric.data.Data): Adsorption system in graph format
     Returns:
-        adsorbate(torch_geometric.data.Data): Adsorbate molecule in graph format
+        adsorbate(torch_geometric.data.Data): Molecule in graph format
     """    
     CHONS = {2, 5, 7, 9, 15} # indexes of C, H, O, N, S in the encoder
     y = [None] * graph.num_nodes # function for new indexing
@@ -157,6 +162,7 @@ def extract_adsorbate(graph: Data) -> Data:
     adsorbate = torch_geometric.data.Data(x, edge)
     return adsorbate
 
+
 def get_number_atoms(graph: Data, atom: str) -> int:
     """Return number of atoms of a specific element in the graph.
 
@@ -172,8 +178,3 @@ def get_number_atoms(graph: Data, atom: str) -> int:
         return int(formula[index+1])
     else:
         return "The defined element is not present in the graph."
-    
-
-
-
-        

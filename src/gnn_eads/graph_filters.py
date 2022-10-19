@@ -2,6 +2,7 @@
 Module containing a set of filter functions for graphs in the Geometric PyTorch format.
 These filters are applied before the inclusion of the graphs in the HetGraphDataset objects.
 """
+
 import torch
 from torch_geometric.utils import to_networkx
 import numpy as np
@@ -11,6 +12,7 @@ from torch_geometric.data import Data
 from gnn_eads.constants import ENCODER, METALS, ELEMENT_LIST, NODE_FEATURES
 from gnn_eads.graph_tools import extract_adsorbate, convert_gpytorch_to_networkx
 from gnn_eads.functions import get_graph_formula
+
 
 def single_fragment_filter(graph: Data):
     """
@@ -70,6 +72,7 @@ def single_fragment_filter(graph: Data):
     else:  # graph with one node and zero edges
         return True
 
+
 def H_connectivity_filter(graph: Data):
     """
     Graph filter that checks the connectivity of H atoms in the adsorbate is correct.
@@ -103,6 +106,7 @@ def H_connectivity_filter(graph: Data):
         return False
     else:
         return True
+
 
 def C_connectivity_filter(graph: Data):
     """
@@ -138,6 +142,7 @@ def C_connectivity_filter(graph: Data):
     else:
         return True
 
+
 def global_filter(graph: Data):
     """
     Filter function sum of single_fragment and H_connectivity.
@@ -151,6 +156,7 @@ def global_filter(graph: Data):
     condition2 = H_connectivity_filter(graph)
     condition3 = C_connectivity_filter(graph)
     return (condition1 and condition2) and condition3
+
 
 def is_chiral(graph: Data):
     """Filter for chiral molecules (OR STEREOISOMERS?)
@@ -190,6 +196,7 @@ def is_chiral(graph: Data):
         #fragments = len(list(nx.connected_components(nx_graph)))
         
     return None
+
 
 def explode_graph(graph: Data, removed_node: int):
     """Explode graph into fragments keeping out the selected node
@@ -241,6 +248,7 @@ def explode_graph(graph: Data, removed_node: int):
     exploded_graph = Data(x, edge)
     return exploded_graph
 
+
 def isomorphism_test(graph: Data, graph_list: list, eps: float=0.05) -> bool:
     """Perform isomorphism test for the input graph before including it in the dataset.
     Test based on graph formula and energy difference.
@@ -262,5 +270,4 @@ def isomorphism_test(graph: Data, graph_list: list, eps: float=0.05) -> bool:
         else:
             continue
     return True
-        
         

@@ -1,6 +1,5 @@
-from torch import load
-from torch_geometric.loader import DataLoader
-
+#from torch import load
+#from torch_geometric.loader import DataLoader
 from torch_geometric.data import InMemoryDataset, Data
 import torch
 import numpy as np
@@ -80,6 +79,7 @@ class HetGraphDataset(InMemoryDataset):
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
 
+
 def create_post_processed_datasets(identifier: str, paths: dict):
     """Create the graph FG-dataset. 
 
@@ -137,6 +137,3 @@ def create_post_processed_datasets(identifier: str, paths: dict):
                gas_group4_dataset,
                gas_oximes_dataset) 
     return FG_dataset
-
-#BM_dataset = load("./BM_dataset/Graph_dataset.pt")
-#BM_dataloader = DataLoader(BM_dataset)

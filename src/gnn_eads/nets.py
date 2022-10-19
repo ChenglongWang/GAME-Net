@@ -8,8 +8,8 @@ from torch_geometric.data import Data
 from gnn_eads.constants import NODE_FEATURES
 from gnn_eads.functions import get_graph_conversion_params, get_mean_std_from_model
 
-class Net_TEMPLATE(torch.nn.Module):
-    """Template for creating specific GNN architecture.
+class NetTemplate(torch.nn.Module):
+    """Template for creating  customized GNN architecture.
     Args:
         dim(int): depth of hidden layers. Default to 128.
         node_features(int): number of features per node. Default to 17.
@@ -17,8 +17,12 @@ class Net_TEMPLATE(torch.nn.Module):
         bias(bool): switch for turning on the additive bias in the GNN layers. Default to False.    
     """
     
-    def __init__(self, dim=128, node_features=17, sigma=torch.nn.ReLU(), bias=False):
-        super(Net_TEMPLATE, self).__init__()
+    def __init__(self,
+                 dim: int=128,
+                 node_features: int=17,
+                 sigma=torch.nn.ReLU(),
+                 bias: bool=False):
+        super(NetTemplate, self).__init__()
         self.dim = dim
         self.node_features = node_features
         self.sigma = sigma

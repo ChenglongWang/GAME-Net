@@ -12,12 +12,13 @@ import csv
 import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
-from torchinfo import summary
+#from torchinfo import summary
 
 from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI
 from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from gnn_eads.graph_tools import plotter
 from gnn_eads.plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
+
 
 def create_model_report(model_name: str,
                         configuration_dict: dict,
@@ -136,9 +137,6 @@ def create_model_report(model_name: str,
     model.eval()
     model.to("cpu")
     
-    # w, y = test set
-    # x, z = train set
-    # a, b = val set
     w_pred, w_true = [], []  # Test set
     x_pred, x_true = [], []  # Train set
     a_pred, a_true = [], []  # Validation set
@@ -279,16 +277,13 @@ def create_model_report(model_name: str,
     with open("../models/{}/test_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
         writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-        writer.writerows(zip(test_label_list, y_true, y_pred, E))
-        
+        writer.writerows(zip(test_label_list, y_true, y_pred, E))    
     with open("../models/{}/train_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
         writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-        writer.writerows(zip(train_label_list, z_true, z_pred, [(z_pred[i] - z_true[i]) for i in range(N_train)]))
-        
+        writer.writerows(zip(train_label_list, z_true, z_pred, [(z_pred[i] - z_true[i]) for i in range(N_train)]))    
     with open("../models/{}/validation_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
         writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
         writer.writerows(zip(val_label_list, b_true, b_pred, [(b_pred[i] - b_true[i]) for i in range(N_val)]))
-    
     return "Model saved in ../models/{}".format(model_name)

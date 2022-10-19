@@ -4,8 +4,9 @@
 #import toml
 
 from gnn_eads.functions import get_tuples, export_tuples, geometry_to_graph_analysis, get_id
-from gnn_eads.paths import create_paths
-from gnn_eads.constants import FG_RAW_GROUPS
+#from gnn_eads.paths import create_paths
+#from gnn_eads.constants import FG_RAW_GROUPS
+
 
 def create_graph_datasets(graph_settings: dict, 
                           paths_dict: dict):

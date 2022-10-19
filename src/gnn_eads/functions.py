@@ -18,6 +18,7 @@ from pymatgen.io.vasp import Outcar
  
 from gnn_eads.constants import CORDERO, METALS, MOL_ELEM, FG_RAW_GROUPS, ENCODER
 
+
 def split_percentage(splits: int, test: bool=True) -> tuple[int]:
     """Return split percentage of the train, validation and test sets.
 
@@ -33,6 +34,7 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
         return a, b, b
     else:
         return int((1 - 1/splits) * 100), math.ceil(100 / splits)
+
 
 def mol_to_ensemble(molecule: Molecule,
                     voronoi_tolerance: float,
@@ -82,6 +84,7 @@ def mol_to_ensemble(molecule: Molecule,
     new_molecule = connectivity_search_voronoi(new_molecule, voronoi_tolerance, elem_rad)
     return new_molecule
 
+
 def ensemble_to_graph(molecule: Molecule, 
                       second_order: bool) -> nx.Graph:
     """
@@ -110,6 +113,7 @@ def ensemble_to_graph(molecule: Molecule,
         mol_graph.add_edge(*connection)
     return mol_graph, (elem_lst, (tuple(connections_1), tuple(connections_2)))
 
+
 def get_energy(dataset: str, paths_dict:dict) -> dict:
     """
     Extract the raw energy label for each sample of the dataset from the energies.dat file.    
@@ -126,6 +130,7 @@ def get_energy(dataset: str, paths_dict:dict) -> dict:
         ener_dict[split[0]] = float(split[1])
     return ener_dict
 
+
 def get_structures(dataset: str, paths_dict: dict) -> dict:
     """
     Extract the structure for each sample of the dataset from the 
@@ -139,6 +144,7 @@ def get_structures(dataset: str, paths_dict: dict) -> dict:
     for contcar in paths_dict[dataset]['geom'].glob('./*.contcar'):
         mol_dict[contcar.stem] = file_to_mol(contcar, 'contcar', bulk=False)
     return mol_dict
+
 
 def get_tuples(dataset: str,
                voronoi_tolerance: float,
@@ -184,6 +190,7 @@ def get_tuples(dataset: str,
         ntuple_dict[key] = ntuple(code=key, mol=mol, graph=graph, energy=energy)
     return ntuple_dict
 
+
 def export_tuples(filename: str,
                   tuple_dict: dict):
     """
@@ -200,6 +207,7 @@ def export_tuples(filename: str,
             outfile.write(f'{lst_trans(inter.graph[1][1][0])}\n')
             outfile.write(f'{lst_trans(inter.graph[1][1][1])}\n')
             outfile.write(f'{inter.energy}\n')
+
 
 def geometry_to_graph_analysis(dataset:str, paths_dict:dict):
     """
@@ -243,6 +251,7 @@ def geometry_to_graph_analysis(dataset:str, paths_dict:dict):
     print("Percentage of bad representations: {:.2f}%".format((wrong_graphs/dataset_size)*100))
     print("-------------------------------------------")
     return wrong_graphs, wrong_samples, dataset_size
+
 
 def get_graph_formula(graph: Data,
                       categories,
@@ -299,6 +308,7 @@ def get_graph_formula(graph: Data,
         label += extra_space
     return label
 
+
 def get_number_atoms_from_label(formula:str,
                                 H_count:bool=True) -> int:
     """Get the total number of atoms in the adsorbate from a graph formula
@@ -325,6 +335,7 @@ def get_number_atoms_from_label(formula:str,
         my_list.append(char)
     n += int("".join(my_list))
     return n
+
 
 def create_loaders(datasets:tuple,
                    split: int=5,
@@ -370,6 +381,7 @@ def create_loaders(datasets:tuple,
         print("Data split (train/val): {}/{} %".format(int(100*(split-1)/split), int(100/split)))
         print("Training data = {} Validation data = {} (Total = {})".format(train_n, val_n, total_n))
         return (train_loader, val_loader, None)
+
 
 def scale_target(train_loader: DataLoader,
                  val_loader: DataLoader,
@@ -445,6 +457,7 @@ def scale_target(train_loader: DataLoader,
         print("Target Scaling NOT applied")
         return train_loader, val_loader, test_loader, 0, 1
 
+
 def connectivity_search_voronoi(molecule: Molecule,
                                 tolerance:float,
                                 metal_rad_dict:dict,
@@ -507,6 +520,7 @@ def connectivity_search_voronoi(molecule: Molecule,
         molecule.coords_update(direct_old, 'direct')
     return molecule
 
+
 def train_loop(model,
                device:str,
                train_loader: DataLoader,
@@ -543,6 +557,7 @@ def train_loop(model,
     loss_all /= len(train_loader.dataset)
     mae_all /= len(train_loader.dataset)
     return loss_all, mae_all 
+
 
 def test_loop(model,
               loader: DataLoader,
@@ -583,6 +598,7 @@ def test_loop(model,
         print("Mean Absolute Error = {} eV".format(error))
     return error 
 
+
 def get_mean_std_from_model(path:str) -> tuple[float]:
     """Get mean and standard deviation used for scaling the target values 
        from the selected trained model.
@@ -601,6 +617,7 @@ def get_mean_std_from_model(path:str) -> tuple[float]:
         if "(train+val) standard deviation" in line:
             std = float(line.split()[-2])
     return mean, std
+
 
 def get_graph_conversion_params(path: str) -> tuple:
     """Get the hyperparameters for geometry->graph conversion algorithm.
@@ -624,6 +641,7 @@ def get_graph_conversion_params(path: str) -> tuple:
             else:
                 second_order_nn = False
     return voronoi_tol, scaling_factor, second_order_nn 
+
 
 def contcar_to_graph(contcar_file: str,
                      voronoi_tolerance: float,
@@ -653,6 +671,7 @@ def contcar_to_graph(contcar_file: str,
     x = torch.tensor(elem_enc, dtype=torch.float)
     graph = Data(x=x, edge_index=edge_index)
     return graph
+
 
 def get_graph_sample(system: str, 
                      surface: str,
@@ -692,6 +711,7 @@ def get_graph_sample(system: str,
         graph.family = family
     return graph
 
+
 def get_id(graph_params: dict) -> str:
     """
     Return string associated to a specific graph representation setting, 
@@ -709,6 +729,7 @@ def get_id(graph_params: dict) -> str:
     identifier += str(graph_params["scaling_factor"]).replace(".", "")
     identifier += ".dat"
     return identifier
+
 
 def surf(metal:str) -> str:
     """Returns metal facet as function of metal present in the FG-dataset.
