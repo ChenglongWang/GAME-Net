@@ -59,7 +59,7 @@ Within this mode, you can opt between two different options:
 The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `data/FG_dataset` folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
-1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file. Once created, type: 
+1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file (you will find some input templates in the `scripts` folder). Once created, type: 
 
     `python train_GNN.py -i hyper_config.toml`
 
