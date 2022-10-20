@@ -12,17 +12,17 @@ from torch_geometric.data import Data
 from chemspipy import ChemSpider
 from pyRDTP.tools.pymol import from_smiles
 
-from gnn_eads.constants import METALS, ENCODER, CORDERO, MOL_ELEM
+from gnn_eads.constants import METALS, ENCODER, CORDERO, MOL_ELEM, CHEMSPIPY
 from gnn_eads.functions import connectivity_search_voronoi, ensemble_to_graph, surf
 from gnn_eads.nets import PreTrainedModel
 from gnn_eads.graph_tools import visualize_graph
 
-MODEL_PATH = "../models/best_model"            
-API_KEY = "NmdJjTAaDxkBoDYGrSRLQED9zKOhmqJ9"  # API key to access ChemSpider
-cs = ChemSpider(API_KEY)
+           
+cs = ChemSpider(CHEMSPIPY)
 to_int = lambda x: [float(i) for i in x]
     
 # 1) Load model
+MODEL_PATH = "../models/best_model"    
 model = PreTrainedModel(MODEL_PATH)
 
 #2) Interactive section

@@ -66,3 +66,4 @@ sigma_dict = {"ReLU": ReLU(), "tanh": Tanh()}
 
 # Others
 DPI = 500
+CHEMSPIPY = "NmdJjTAaDxkBoDYGrSRLQED9zKOhmqJ9"  # API key to access ChemSpider (1000 trials/month)
