@@ -9,7 +9,7 @@ import numpy as np
 import networkx as nx
 from torch_geometric.data import Data
 
-from gnn_eads.constants import ENCODER, METALS, ELEMENT_LIST, NODE_FEATURES
+from gnn_eads.constants import ENCODER, METALS, ELEMENT_LIST, NODE_FEATURES, MOL_ELEM
 from gnn_eads.graph_tools import extract_adsorbate, convert_gpytorch_to_networkx
 from gnn_eads.functions import get_graph_formula
 
@@ -18,7 +18,7 @@ def single_fragment_filter(graph: Data):
     """
     Filter out graphs that contain more than one adsorbate in the original system.
     Args: 
-        graph(torch_geometric.data.Data): Adsorption graph.
+        graph(Data): Adsorption graph.
     Returns:
         (bool): True = Just one single adsorbate is present in the original graph
                 False = More fragments are present on the original metal slab.
@@ -83,15 +83,18 @@ def H_connectivity_filter(graph: Data):
         (bool): True= Correct H-connectivity in the molecule
                 False= Bad H-connectivity in the molecule
     """
+    CHONS = []  # Indeces of the molecules elements in the encoder
+    encoder_list = list(ENCODER.categories_[0])
+    for element in MOL_ELEM:
+       CHONS.append(encoder_list.index(element))
+    H_index = encoder_list.index('H')
     # 1) Find index of H nodes
     H_nodes_indexes = []
     for i in range(graph.num_nodes):
-        if graph.x[i, 5] == 1:  # 5 is the index of H in the one-hot encoder
+        if graph.x[i, H_index] == 1:
             H_nodes_indexes.append(i)
-    # 2) Apply correctness criterion to all H atoms
-    # NB Just one bad connectivity makes the whole graph wrong
-    bad_H = 0
-    CHONS = {2, 5, 7, 9, 15} # indexes of C, H, O, N, S in the encoder
+    # 2) Apply correctness criterion to all H atoms (Just one bad connectivity makes the whole graph wrong)
+    bad_H = 0 
     for index in H_nodes_indexes:
         counter = 0  # edges between H and atoms in (C, H, O, N, S)
         for j in range(graph.num_edges):
@@ -118,15 +121,18 @@ def C_connectivity_filter(graph: Data):
         (bool): True=Correct connectivity for all C atoms
                 False=Wrong connectivity for at least one C atom
     """
+    CHONS = []  # Get indeces of CHONS in the encoder
+    encoder_list = list(ENCODER.categories_[0])
+    for element in MOL_ELEM:
+       CHONS.append(encoder_list.index(element)) 
+    C_index = encoder_list.index('C')
     # 1) Find index of C nodes
     C_nodes_indexes = []
     for i in range(graph.num_nodes):
-        if graph.x[i, 2] == 1:  # 2 is the index of H in the one-hot encoder
+        if graph.x[i, C_index] == 1:  
             C_nodes_indexes.append(i)
-    # 2) Apply correctness criterion to all H atoms
-    # NB Just one bad connectivity makes the whole graph wrong
+    # 2) Apply correctness criterion to all H atoms (Just one bad connectivity makes the whole graph wrong)
     bad_C = 0
-    CHONS = {2, 5, 7, 9, 15} # indexes of C, H, O, N, S in the encoder
     for index in C_nodes_indexes:
         counter = 0  # edges between C and atoms in (C, H, O, N, S)
         for j in range(graph.num_edges):
@@ -160,9 +166,10 @@ def global_filter(graph: Data):
 
 def is_chiral(graph: Data):
     """Filter for chiral molecules (OR STEREOISOMERS?)
+    In progress ...
 
     Args:
-        graph (_type_): _description_
+        graph (_type_): Input adsorption/molecule graph
     Returns:
         (bool)
     """
@@ -202,11 +209,11 @@ def explode_graph(graph: Data, removed_node: int):
     """Explode graph into fragments keeping out the selected node
 
     Args:
-        graph (torch_geometric.data.Data): _description_
-        node_index (int): _description_
+        graph (Data): Input adsorption/molecular graph.
+        removed_node (int): index of the explosion node.
 
     Returns:
-        _type_: _description_
+        exploded_graph (Data): Exploded graph.
     """
     # 1) Initialize graph feature matrix and connection for the new graph
     x = torch.zeros((graph.num_nodes-1, NODE_FEATURES))
@@ -250,15 +257,15 @@ def explode_graph(graph: Data, removed_node: int):
 
 
 def isomorphism_test(graph: Data, graph_list: list, eps: float=0.05) -> bool:
-    """Perform isomorphism test for the input graph before including it in the dataset.
+    """Perform isomorphism test for the input graph before including it in the clean final dataset.
     Test based on graph formula and energy difference.
 
     Args:
-        graph (Data): Input graph
-        graph_list (list): graph list against which the input graph is tested
+        graph (Data): Input graph.
+        graph_list (list): graph list against which the input graph is tested.
         eps (float): tolerance value for the energy difference in eV. Default to 0.05 eV.
     Returns:
-        bool: Whether the graph passed the isomorphism test
+        bool: Whether the graph passed the isomorphism test.
     """
     if len(graph_list) == 0:
         return True
