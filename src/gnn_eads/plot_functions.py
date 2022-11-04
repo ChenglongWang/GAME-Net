@@ -26,13 +26,17 @@ def hist_num_atoms(n_list:list[int]):
     return fig, ax
 
 
-def violinplot_family(model, loader, std_tv, dataset_labels, device="cpu"):
-    """Generate Violinplot sorted by chemical family
+def violinplot_family(model,
+                      loader,
+                      std_tv: float,
+                      dataset_labels: list,
+                      device :str="cpu"):
+    """Generate violinplot sorted by chemical family.
 
     Args:
-        model (_type_): GNN model instantiation
-        loader (_type_): DataLoader
-        std_tv (_type_): standard deviation of the train+val dataset
+        model (_type_): GNN model instantiation.
+        loader (_type_): DataLoader.
+        std_tv (_type_): standard deviation of the train+val dataset.
     """
     family_dict = {}
     error_dict = {}
@@ -83,7 +87,11 @@ def violinplot_family(model, loader, std_tv, dataset_labels, device="cpu"):
     return fig, ax  
 
 
-def E_violinplot_train(model, loader, std_tv, dataset_labels, epoch):
+def E_violinplot_train(model,
+                       loader,
+                       std_tv,
+                       dataset_labels,
+                       epoch):
     """Generate Violinplot during training
     Args:
         model (_type_): GNN model instantiation
@@ -138,7 +146,10 @@ def E_violinplot_train(model, loader, std_tv, dataset_labels, epoch):
     return fig, ax    
 
 
-def DFTvsGNN_plot(model, loader, mean_tv, std_tv):
+def DFTvsGNN_plot(model,
+                  loader,
+                  mean_tv,
+                  std_tv):
     """Generate plot of GNN prediction vs true DFT data.
 
     Args:
@@ -200,7 +211,11 @@ def DFTvsGNN_plot(model, loader, mean_tv, std_tv):
     return fig, ax
 
 
-def DFTvsGNN_plot_train(model, loader, mean_tv, std_tv, epoch):
+def DFTvsGNN_plot_train(model,
+                        loader,
+                        mean_tv,
+                        std_tv,
+                        epoch):
     """Generate parity plot of GNN prediction vs DFT data.
 
     Args:
@@ -346,6 +361,22 @@ def DFT_kdeplot(fg_dataset):
     # ax.spines['bottom'].set_linewidth(1.5)
     # ax.spines['left'].set_linewidth(1.5)
     return fig, ax
+
+def label_dist_train_val_test(train_loader, val_loader, test_loader=None):
+    "Plot data labels distribution in the training, validation and test sets."
+    train_y = [graph.y.item() for graph in train_loader.dataset]
+    val_y = [graph.y.item() for graph in val_loader.dataset]
+    fig, ax = plt.subplots(figsize=(9/2.54, 6/2.54), dpi=300)
+    sns.kdeplot(train_y, ax=ax, color="red")
+    sns.kdeplot(val_y, ax=ax, color="blue")
+    if test_loader != None:
+        test_y = [graph.y.item() for graph in test_loader.dataset]
+        sns.kdeplot(test_y, ax=ax, color="orange")    
+    ax.legend(["Train", "Val", "Test"], loc=1)
+    plt.xlabel("Scaled energy / -")
+    plt.ylabel("Density")
+    return fig, ax
+    
 
 
 def E_violinplot_train_gif(model, loader, std_tv, dataset_labels, epoch):

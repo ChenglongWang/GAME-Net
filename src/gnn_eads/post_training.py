@@ -17,7 +17,7 @@ from sklearn.metrics import r2_score
 from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI
 from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from gnn_eads.graph_tools import plotter
-from gnn_eads.plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot
+from gnn_eads.plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot, label_dist_train_val_test
 
 
 def create_model_report(model_name: str,
@@ -176,6 +176,10 @@ def create_model_report(model_name: str,
         n_list.append(get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])))
     fig, ax = hist_num_atoms(n_list)
     plt.savefig("../models/{}/num_atoms_hist.svg".format(model_name), bbox_inches='tight')
+    plt.close()
+    # Distribution of the scaled energy labels in the train/val/test sets
+    fig, ax = label_dist_train_val_test(train_loader, val_loader, test_loader)
+    plt.savefig("../models/{}/label_dist_train_val_test.svg".format(model_name), bbox_inches='tight')
     plt.close()
     # Violinplot sorted by chemical family
     fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
