@@ -27,7 +27,7 @@ def create_model_report(model_name: str,
                         scaling_params : tuple[float], 
                         mae_lists: tuple[list], 
                         device: dict=None):
-    """Create full report of the performed learning process.
+    """Create full report of the performed model training.
 
     Args:
         model_name (str): name of the model
@@ -55,6 +55,10 @@ def create_model_report(model_name: str,
     val_loader = loaders[1]
     test_loader = loaders[2]
     
+    # Get data labels in train/val/test sets
+    train_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in train_loader.dataset]
+    val_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in val_loader.dataset]
+    
     # Unfold input dict
     graph = configuration_dict["graph"]
     train = configuration_dict["train"]
@@ -72,7 +76,7 @@ def create_model_report(model_name: str,
     else:
         pass
     
-    # MAE trends during training
+    # MAE trend during training
     train_list = mae_lists[0]
     val_list = mae_lists[1]
     test_list = mae_lists[2]
@@ -132,6 +136,7 @@ def create_model_report(model_name: str,
         file1.close()
         return "Model saved in ../models/{}".format(model_name)
     
+    test_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in test_loader.dataset]
     N_test = len(test_loader.dataset)  
     N_tot = N_train + N_val + N_test    
     model.eval()
@@ -159,21 +164,9 @@ def create_model_report(model_name: str,
     z_true = [x_true[i].item()*std_tv + mean_tv for i in range(N_train)]
     b_pred = [a_pred[i].item()*std_tv + mean_tv for i in range(N_val)]  # Val set
     b_true = [a_true[i].item()*std_tv + mean_tv for i in range(N_val)]
-    train_label_list, val_label_list, test_label_list = [], [], []
-    for data in train_loader.dataset:
-        train_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
-    for data in val_loader.dataset:
-        val_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
-    for data in test_loader.dataset:
-        test_label_list.append(get_graph_formula(data, ENCODER.categories_[0]))
     # Histogram based on number of adsorbate atoms (train+val+test dataset)
-    n_list = []
-    for graph in train_loader.dataset:
-        n_list.append(get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])))
-    for graph in val_loader.dataset:
-        n_list.append(get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])))
-    for graph in test_loader.dataset:
-        n_list.append(get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])))
+    n_list = [get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])) for graph in \
+              train_loader.dataset+val_loader.dataset+test_loader.dataset]
     fig, ax = hist_num_atoms(n_list)
     plt.savefig("../models/{}/num_atoms_hist.svg".format(model_name), bbox_inches='tight')
     plt.close()
@@ -200,14 +193,18 @@ def create_model_report(model_name: str,
     fig, ax = training_plot(train_list, val_list, test_list, train["splits"])
     plt.savefig("../models/{}/learning_curve.svg".format(model_name), bbox_inches='tight')
     plt.close()
-    # Error analysis (test set)
-    E = [(y_pred[i] - y_true[i]) for i in range(N_test)]     # Error
-    AE = [abs(E[i]) for i in range(N_test)]                  # Absolute Error
-    SE = [E[i] ** 2 for i in range(N_test)]                  # Squared Error
-    APE = [abs(E[i] / y_true[i]) for i in range(N_test)]     # Absolute Percentage Error
-    std_E = np.std(E)                                        # eV
+    # Error analysis 
+    error_test = [(y_pred[i] - y_true[i]) for i in range(N_test)]                     # Error (test set)
+    error_train = [(z_pred[i] - z_true[i]) for i in range(N_train)]                   # Error (train set)
+    error_val = [(b_pred[i] - b_true[i]) for i in range(N_val)]                       # Error (validation set)
+    abs_error_test = [abs(error_test[i]) for i in range(N_test)]                      # Absolute Error (test set)
+    abs_error_train = [abs(error_train[i]) for i in range(N_train)]                   # Absolute Error (train set)
+    abs_error_val = [abs(error_val[i]) for i in range(N_val)]                         # Absolute Error (val set)
+    squared_error_test = [error_test[i] ** 2 for i in range(N_test)]                  # Squared Error
+    abs_pctg_error_test = [abs(error_test[i] / y_true[i]) for i in range(N_test)]     # Absolute Percentage Error
+    std_error_test = np.std(error_test)                                        # eV
     # Test set: Error distribution plot
-    sns.displot(E, bins=50, kde=True)
+    sns.displot(error_test, bins=50, kde=True)
     plt.tight_layout()
     plt.savefig("../models/{}/test_error_dist.svg".format(model_name), dpi=DPI, bbox_inches='tight')
     plt.close()
@@ -250,28 +247,26 @@ def create_model_report(model_name: str,
     file1.write("---------------------------------------------------------\n")
     file1.write("GNN PERFORMANCE\n")
     file1.write("Test set size = {}\n".format(N_test))
-    file1.write("Mean Bias Error (MBE) = {:.3f} eV\n".format(np.mean(E)))
-    file1.write("Mean Absolute Error (MAE) = {:.3f} eV\n".format(np.mean(AE)))
-    file1.write("Root Mean Square Error (RMSE) = {:.3f} eV\n".format(np.sqrt(np.mean(SE))))
-    file1.write("Mean Absolute Percentage Error (MAPE) = {:.3f} %\n".format(np.mean(APE)*100.0))
-    file1.write("Error Standard Deviation = {:.3f} eV\n".format(np.std(E)))
+    file1.write("Mean Bias Error (MBE) = {:.3f} eV\n".format(np.mean(error_test)))
+    file1.write("Mean Absolute Error (MAE) = {:.3f} eV\n".format(np.mean(abs_error_test)))
+    file1.write("Root Mean Square Error (RMSE) = {:.3f} eV\n".format(np.sqrt(np.mean(squared_error_test))))
+    file1.write("Mean Absolute Percentage Error (MAPE) = {:.3f} %\n".format(np.mean(abs_pctg_error_test)*100.0))
+    file1.write("Error Standard Deviation = {:.3f} eV\n".format(np.std(error_test)))
     file1.write("R2 = {:.3f} \n".format(r2_score(y_true, y_pred)))
     file1.write("---------------------------------------------------------\n")
     file1.write("OUTLIERS (TEST SET)\n")
-    outliers_list = []
-    outliers_error_list = []
-    index_list = []
+    outliers_list, outliers_error_list, index_list = [], [], []
     counter = 0
     for sample in range(N_test):
-        if abs(E[sample]) >= 3 * std_E:  
+        if abs_error_test[sample] >= 3 * std_error_test:  
             counter += 1
             outliers_list.append(test_label_list[sample])
-            outliers_error_list.append(E[sample])
+            outliers_error_list.append(error_test[sample])
             index_list.append(sample)
             if counter < 10:
-                file1.write("0{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], E[sample], sample))
+                file1.write("0{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], error_test[sample], sample))
             else:
-                file1.write("{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], E[sample], sample))
+                file1.write("{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], error_test[sample], sample))
             plotter(test_loader.dataset[sample])
             plt.savefig("../models/{}/Outliers/{}.svg".format(model_name, test_label_list[sample].strip()))
             plt.close()
@@ -280,14 +275,14 @@ def create_model_report(model_name: str,
     # Save train, val, test set error of the samples            
     with open("../models/{}/test_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-        writer.writerows(zip(test_label_list, y_true, y_pred, E))    
+        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(test_label_list, y_true, y_pred, error_test, abs_error_test))    
     with open("../models/{}/train_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-        writer.writerows(zip(train_label_list, z_true, z_pred, [(z_pred[i] - z_true[i]) for i in range(N_train)]))    
+        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(train_label_list, z_true, z_pred, error_train, abs_error_train))    
     with open("../models/{}/validation_set.csv".format(model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]"])
-        writer.writerows(zip(val_label_list, b_true, b_pred, [(b_pred[i] - b_true[i]) for i in range(N_val)]))
+        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(val_label_list, b_true, b_pred, error_val, abs_error_val))
     return "Model saved in ../models/{}".format(model_name)
