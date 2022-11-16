@@ -6,7 +6,9 @@ Images/
 __pycache__/
 pyproject.toml
 setup.cfg
-
+requirements.txt
 /*.csv
 .vscode/settings.json
 *.gz
+pre_*.dat
+post_*.dat
