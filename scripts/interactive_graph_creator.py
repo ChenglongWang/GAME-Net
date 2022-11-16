@@ -58,7 +58,8 @@ if adsorption == "n":
     print("-----------------------------------")
     print("-----------GNN PREDICTION----------")
     print("-----------------------------------")
-    print("GNN energy = {:.2f} eV (PBE + VdW)".format(gnn_energy))
+    print("System: {} (gas phase)".format(adsorbate.capitalize()))
+    print("Molecule energy = {:.2f} eV (PBE + VdW)".format(gnn_energy))
     print("Execution time = {:.2f} ms".format(gnn_time * 1000.0))
 elif adsorption == "y":
     elem_array_ads = np.array(elem).reshape(-1, 1)
