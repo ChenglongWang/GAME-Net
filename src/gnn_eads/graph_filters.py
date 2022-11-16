@@ -67,7 +67,7 @@ def single_fragment_filter(graph: Data):
         if nx.is_connected(graph_nx):
             return True
         else:
-            print("{} removed: more than one adsorbate!".format(get_graph_formula(graph, ENCODER.categories_[0])))
+            print("{} excluded from the graph FG-dataset: Fragmented adsorbate!".format(get_graph_formula(graph, ENCODER.categories_[0])))
             return False 
     else:  # graph with one node and zero edges
         return True
@@ -83,11 +83,8 @@ def H_connectivity_filter(graph: Data):
         (bool): True= Correct H-connectivity in the molecule
                 False= Bad H-connectivity in the molecule
     """
-    CHONS = []  # Indeces of the molecules elements in the encoder
-    encoder_list = list(ENCODER.categories_[0])
-    for element in MOL_ELEM:
-       CHONS.append(encoder_list.index(element))
-    H_index = encoder_list.index('H')
+    CHONS = [ELEMENT_LIST.index(element) for element in MOL_ELEM]  # Get indeces of C,H,O,N,S in the encoder 
+    H_index = ELEMENT_LIST.index('H')
     # 1) Find index of H nodes
     H_nodes_indexes = []
     for i in range(graph.num_nodes):
@@ -105,7 +102,7 @@ def H_connectivity_filter(graph: Data):
         if counter not in (0, 1): # Exactly one connection with CHONS or just H atom adsorbed
             bad_H += 1
     if bad_H != 0:
-        print("{} filtered out: wrong H connectivity!".format(get_graph_formula(graph, ENCODER.categories_[0]), bad_H))
+        print("{} excluded from the graph FG-dataset: Wrong H connectivity!".format(get_graph_formula(graph, ENCODER.categories_[0]), bad_H))
         return False
     else:
         return True
@@ -121,11 +118,8 @@ def C_connectivity_filter(graph: Data):
         (bool): True=Correct connectivity for all C atoms
                 False=Wrong connectivity for at least one C atom
     """
-    CHONS = []  # Get indeces of CHONS in the encoder
-    encoder_list = list(ENCODER.categories_[0])
-    for element in MOL_ELEM:
-       CHONS.append(encoder_list.index(element)) 
-    C_index = encoder_list.index('C')
+    CHONS = [ELEMENT_LIST.index(element) for element in MOL_ELEM]  # Get indeces of C,H,O,N,S in the encoder  
+    C_index = ELEMENT_LIST.index('C')
     # 1) Find index of C nodes
     C_nodes_indexes = []
     for i in range(graph.num_nodes):
@@ -143,7 +137,7 @@ def C_connectivity_filter(graph: Data):
         if counter > 4: # maximum 4 connections for C in a molecule
             bad_C += 1
     if bad_C != 0:
-        print("{} filtered out: wrong C connectivity ({} edges)!".format(get_graph_formula(graph, ENCODER.categories_[0]), bad_C))
+        print("{} excluded from the graph FG-dataset: Wrong C connectivity!".format(get_graph_formula(graph, ENCODER.categories_[0])))
         return False
     else:
         return True

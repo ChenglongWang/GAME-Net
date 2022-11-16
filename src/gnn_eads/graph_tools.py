@@ -8,15 +8,15 @@ import torch_geometric
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
 
-from gnn_eads.constants import FULL_ELEM_LIST
+from gnn_eads.constants import FULL_ELEM_LIST, MOL_ELEM, ENCODER, ELEMENT_LIST
 from gnn_eads.functions import get_graph_formula
 
 
 def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     """
-    Convert graph in pytorch_geometric format to networkx type.    
+    Convert graph in pytorch_geometric format to NetworkX type.    
     For each node in the graph, the label corresponding to the atomic species 
-    is added as attribute together with a color.
+    is added as attribute together with a corresponding color.
     Args:
         graph(torch_geometric.data.Data): torch_geometric graph object.
     Returns:
@@ -45,6 +45,7 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     Returns:
         new_g(torch_geometric.data.Data): torch_geometric graph object        
     """
+    return None
 
 
 def plotter(graph: Data,
@@ -115,15 +116,15 @@ def visualize_graph(graph: Data,
 
 
 def extract_adsorbate(graph: Data) -> Data:
-    """Extract molecule from the adsorption configuration graph,
+    """Extract molecule from the adsorption graph,
     removing metals and connections between metal and molecule.
     
     Args:
         graph (torch_geometric.data.Data): Adsorption system in graph format
     Returns:
         adsorbate(torch_geometric.data.Data): Molecule in graph format
-    """    
-    CHONS = {2, 5, 7, 9, 15} # indexes of C, H, O, N, S in the encoder
+    """
+    CHONS = [ELEMENT_LIST.index(element) for element in MOL_ELEM]  # Get indeces of C,H,O,N,S in the encoder    
     y = [None] * graph.num_nodes # function for new indexing
     node_list = []  
     node_index = []
