@@ -1,10 +1,10 @@
 """Run Hyperparameter optimization with Ray Tune"""
 
 import argparse
-import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/gnn_eads')))
+import os
 os.environ["TUNE_RESULT_DELIM"] = "/"
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
 from gnn_eads.paths import create_paths
 from gnn_eads.create_graph_datasets import create_graph_datasets
 from gnn_eads.processed_datasets import create_post_processed_datasets
@@ -34,11 +34,11 @@ HYPERPARAMS["splits"] = 10
 HYPERPARAMS["target_scaling"] = "std"   
 HYPERPARAMS["batch_size"] = tune.choice([16, 32, 64])           
 HYPERPARAMS["epochs"] = 200               
-HYPERPARAMS["loss_function"] = torch.nn.functional.l1_loss   
+HYPERPARAMS["loss_function"] = torch.nn.L1Loss()   
 HYPERPARAMS["lr0"] = tune.choice([0.001, 0.0001])       
 HYPERPARAMS["patience"] = tune.choice([5, 7])              
 HYPERPARAMS["factor"] = tune.choice([0.5, 0.7, 0.9])          
-HYPERPARAMS["minlr"] = tune.choice([1e-8])             
+HYPERPARAMS["minlr"] = 1e-8             
 HYPERPARAMS["betas"] = (0.9, 0.999)     
 HYPERPARAMS["eps"] = tune.choice([1e-8, 1e-9])               
 HYPERPARAMS["weight_decay"] = 0         
@@ -62,7 +62,6 @@ HYPERPARAMS["pool_seq"] = tune.choice([["GMPool_I"],
                                        ["GMPool_G", "SelfAtt", "GMPool_I"],
                                        ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]])
 HYPERPARAMS["pool_layer_norm"] = False 
-# TODO: count the max number of possible combinations of the defined hyperparameter space
 #--------------------------------------------------------------------------------------------#
 PARSER = argparse.ArgumentParser(description="Perform hyperparameter optimization with Ray-Tune (ASHA algorithm). \
                                  The output is stored in the \"hyperparameter_optimization\" directory.")
@@ -83,22 +82,39 @@ PARSER.add_argument("-bra", "--brackets", default=1, type=int, dest="bra",
 PARSER.add_argument("-gpt", "--gpu-per-trial", default=1.0, type=float, dest="gpu_per_trial", 
                     help="Number of gpus per trial (can be fractional).")    
 ARGS = PARSER.parse_args()
-    
-def train_function(config: dict, checkpoint_dir=None):
+
+def get_hyp_space(config: dict):
+    """Return the total number of possible hyperparameters combinations.
+
+    Args:
+        config (dict): Hyperparameter configuration setting
     """
-    Function for hyperparameter tuning via RayTune.
+    x = 1
+    counter = 0
+    for key in list(config.keys()):
+        if type(config[key]) == tune.search.sample.Categorical:
+            x *= len(config[key])
+            counter += 1
+    return counter, x
+    
+def train_function(config: dict):
+    """
+    Helper function for hyperparameter tuning with RayTune.
     Args:
         config (dict): Dictionary with search space (hyperparameters)
     """ 
+    # Generate graph dataset
     data_path = HYPERPARAMS["data"]
-    graph_identifier = get_id(config)
-    family_paths = create_paths(FG_RAW_GROUPS, data_path, graph_identifier)
-    if os.path.exists(data_path + "/amides/pre_" + graph_identifier):  
-        FG_dataset = create_post_processed_datasets(graph_identifier, family_paths)
+    graph_settings_identifier = get_id(config)
+    family_paths = create_paths(FG_RAW_GROUPS, data_path, graph_settings_identifier)
+    condition = [os.path.exists(data_path + "/" + family + "/pre_" + graph_settings_identifier) for family in FG_RAW_GROUPS]
+    if False not in condition:
+        FG_dataset = create_post_processed_datasets(graph_settings_identifier, family_paths)
     else:
-        print("Creating graphs from raw data ...")  
+        print("Creating graphs from raw DFT data ...")  
         create_graph_datasets(config, family_paths)
-        FG_dataset = create_post_processed_datasets(graph_identifier, family_paths) 
+        FG_dataset = create_post_processed_datasets(graph_settings_identifier, family_paths) 
+    # Data splitting and target scaling
     train_loader, val_loader, test_loader = create_loaders(FG_dataset,
                                                            config["splits"],
                                                            config["batch_size"], 
@@ -107,7 +123,8 @@ def train_function(config: dict, checkpoint_dir=None):
                                                                     val_loader,
                                                                     test_loader, 
                                                                     mode=config["target_scaling"], 
-                                                                    test=config["test_set"])    
+                                                                    test=config["test_set"])  
+    # Define device, model, optimizer and lr-scheduler  
     device = "cuda" if torch.cuda.is_available() else "cpu"            
     model = FlexibleNet(dim=config["dim"],
                         N_linear=config["n_linear"], 
@@ -132,9 +149,11 @@ def train_function(config: dict, checkpoint_dir=None):
                                      mode='min',
                                      factor=config["factor"],
                                      patience=config["patience"],
-                                     min_lr=config["minlr"])    
-    train_list, val_list, test_list = [], [], [] # MAE vs epoch
+                                     min_lr=config["minlr"])
+    # Training process    
+    train_list, val_list, test_list = [], [], [] 
     for iteration in range(1, config["epochs"]+1):
+        torch.cuda.empty_cache()
         lr = lr_scheduler.optimizer.param_groups[0]['lr']
         _, train_MAE = train_loop(model, device, train_loader, optimizer, config["loss_function"])  
         val_MAE = test_loop(model, val_loader, device, std)
@@ -145,22 +164,11 @@ def train_function(config: dict, checkpoint_dir=None):
                   'Test MAE: {:.4f} eV'.format(iteration, lr, train_MAE*std, val_MAE, test_MAE))
         else:
             print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
-                  .format(iteration, lr, train_MAE*std, val_MAE))      
-        # BM_MAE = test_loop(model, BM_dataloader, device=device, std=std, mean=mean, scaled_graph_label=False)                    
-        #tune.report(BM_MAE=BM_MAE, FG_MAE=test_MAE, epoch=iteration)            
+                  .format(iteration, lr, train_MAE*std, val_MAE))               
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
         test_list.append(test_MAE)
         tune.report(FG_MAE=test_MAE, epoch=iteration)  
-    # if BM_MAE <= ARGS.target:  # If the extrapolation performance is good, save the model!
-    #     time = str(datetime.now())[11:]
-    #     time = time[:8]
-    #     create_model_report("{}_{}".format(ARGS.o, time),
-    #                         HYPERPARAMS,  # Wrong
-    #                         model,
-    #                         (train_loader, val_loader, test_loader),
-    #                         (mean, std),
-    #                         (train_list, val_list, test_list))
     
 hypopt_scheduler = ASHAScheduler(time_attr="epoch",
                                  metric="FG_MAE",
@@ -171,7 +179,11 @@ hypopt_scheduler = ASHAScheduler(time_attr="epoch",
                                  brackets=ARGS.bra)
 
 def main():
-    ray.init(ignore_reinit_error=True)
+    counter, x = get_hyp_space(HYPERPARAMS)
+    print("Hyperparameters investigated: {}".format(counter))
+    print("Hyperparameter space: {} possible combinations".format(x))
+    print("Number of trials: {} ({:.2f} % of space covered)".format(ARGS.s, ARGS.s/x))
+    ray.init(ignore_reinit_error=True, runtime_env={"working_dir": "../src/"}) 
     result = tune.run(train_function,
                       name=ARGS.o,
                       time_budget_s=3600*24,
