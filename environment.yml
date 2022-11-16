@@ -200,7 +200,6 @@ dependencies:
     - py-spy==0.3.14
     - pyasn1==0.4.8
     - pyasn1-modules==0.2.8
-    - pyrdtp==0.2
     - pyrsistent==0.19.2
     - ray==2.1.0
     - rsa==4.9
