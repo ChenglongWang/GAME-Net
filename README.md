@@ -20,7 +20,7 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
 
 2. Create a conda environment. Enter the repo: You should find the file `environment.yml`: It contains the information about the packages needed to create the environment for this project. Type the command:  
 
-    `conda env create -f environment.yml`  
+    `conda create -f environment.yml`  
     
     Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal).  
 
