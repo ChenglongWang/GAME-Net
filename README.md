@@ -18,16 +18,15 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
     
     You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo: You should find the file `environment.yml`: It contains the information about the packages needed to create the environment for this project. Type the command:  
+2. Create a conda environment. Enter the repo: You should find the file `environment.txt`: It contains the information about the packages needed to create the environment for this project.   
 
-    `conda create -f environment.yml`  
+    `conda create --name GNN --file environment.txt`  
     
     Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal).  
 
 3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), a package at the base of the framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command) and install it with pip:  
-
-    `git clone https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp.git`  
-    `pip install pyrdtp/`
+  
+    `pip install pyrdtp`
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
 
