@@ -10,7 +10,7 @@ This is the code repository of the framework related to the work "Fast Evaluatio
 - Same molecules mentioned above adsorbed on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
-## Installation
+## Installation (Linux systems)
 
 1. Clone the repo from GitLab. Open a terminal and use the following command:  
 
@@ -18,17 +18,17 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
     
     You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo: You should find the file `environment.txt`: It contains the information about the packages needed to create the environment for this project.   
+2. Create a conda environment. Enter the repo. You should find the file `requirements.txt`: It contains the information about the packages needed to create the environment for this project (NB: The environment occupies 6.5 GB, check that you have enough space before installing it).   
 
-    `conda create --name GNN --file environment.txt`  
+    `conda create --name GNN --file requirements.txt`  
     
-    Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal).  
+    Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal prompt).  
 
-3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), a package at the base of the framework. Clone the repo in the existing `gnn_eads` base directory (i.e., be sure to be in `gnn_eads` before executing the following command) and install it with pip:  
+3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for hyperparameter optimization. Since they are not available in the conda-forge channel, use pip to install them:  
   
-    `pip install pyrdtp`
+    `pip install pyrdtp ray`
 
-    To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp in the list.
+    To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp and ray in the list.
 
 Done! In theory now everything is set up to start playing with the GNN framework!
 
