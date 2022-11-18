@@ -4,7 +4,7 @@
     <img src="./media/GNN2.gif" width="60%" height=60%"/>
 </p>
 
-This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The Graph Neural Networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
+This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The graph neural networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
 - All closed-shell molecules containing C, H, O, N and S.
 - Same molecules mentioned above adsorbed on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
@@ -12,13 +12,15 @@ This is the code repository of the framework related to the work "Fast Evaluatio
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation (Linux systems)
 
-1. Clone the repo from GitLab. Open a terminal and use the following command:  
+Prerequisites for installing the Python repo are [git](https://git-scm.com/) and [conda](https://docs.conda.io/en/latest/).
+
+1. Clone the repo from GitLab. Open a terminal and type the following command:  
 
     `git clone https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads.git`  
     
     You should now have the repo ``gnn_eads`` in your current directory.  
 
-2. Create a conda environment. Enter the repo. You should find the file `requirements.txt`: It contains the information about the packages needed to create the environment for this project (NB: The environment occupies 6.5 GB, check that you have enough space before installing it).   
+2. Create a conda environment. Enter the repo. You should find the file `requirements.txt`: It contains the information about the packages needed to create the environment for this project (NB: The environment occupies 7 GB, check that you have enough space before installing it).   
 
     `conda create --name GNN --file requirements.txt`  
     
@@ -30,7 +32,7 @@ The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometr
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp and ray in the list.
 
-Done! In theory now everything is set up to start playing with the GNN framework!
+Done! Now everything is set up to start playing with the GNN framework!
 
 ## Usage
 
@@ -54,7 +56,7 @@ Within this mode, you can opt between two different options:
 The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `data/FG_dataset` folder.
 Within this mode, you can choose among two available ways to use the GNN:
 
-1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a toml file (you will find some input templates in the `scripts` folder). Once created, type: 
+1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file (you will find some input templates in the `scripts` folder). Once created, type: 
 
     `python train_GNN.py -i hyper_config.toml`
 
@@ -66,7 +68,7 @@ Within this mode, you can choose among two available ways to use the GNN:
 # Authors
 
 Eng. Santiago Morandi, doctoral researcher, López group (ICIQ, Spain)  
-Dr. Sergio Pablo-García, postdoctoral researcher, The Matter Lab (UoT, Canada)
+Dr. Sergio Pablo-García, postdoctoral researcher, The Matter Lab, A. Aspuru-Guzik group (UoT, Canada)
 # Contributors
 
 Zarko Ivkovic, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
