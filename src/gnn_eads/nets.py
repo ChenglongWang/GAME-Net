@@ -5,6 +5,7 @@ from torch.nn import Linear
 from torch_geometric.nn import SAGEConv, GraphMultisetTransformer
 from torch_geometric.data import Data
 
+
 from gnn_eads.constants import NODE_FEATURES
 from gnn_eads.functions import get_graph_conversion_params, get_mean_std_from_model
 

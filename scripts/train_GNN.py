@@ -49,14 +49,15 @@ if __name__ == "__main__":
         device_dict["name"] = "CPU"    
      
     # Create FG-dataset from raw DFT data 
-    graph_identifier = get_id(graph_settings)
-    family_paths = create_paths(FG_RAW_GROUPS, data_path, graph_identifier)
-    if exists(data_path + "/amides/pre_" + graph_identifier):  
-        FG_dataset = create_post_processed_datasets(graph_identifier, family_paths)
+    graph_settings_identifier = get_id(graph_settings)
+    family_paths = create_paths(FG_RAW_GROUPS, data_path, graph_settings_identifier)
+    condition = [exists(data_path + "/" + family + "/pre_" + graph_settings_identifier) for family in FG_RAW_GROUPS]
+    if False not in condition:
+        FG_dataset = create_post_processed_datasets(graph_settings_identifier, family_paths)
     else:
         print("Creating graphs from raw data ...")  
         create_graph_datasets(graph_settings, family_paths)
-        FG_dataset = create_post_processed_datasets(graph_identifier, family_paths)
+        FG_dataset = create_post_processed_datasets(graph_settings_identifier, family_paths)
             
     # Create train/validation/test sets  
     train_loader, val_loader, test_loader = create_loaders(FG_dataset,

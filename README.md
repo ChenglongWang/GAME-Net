@@ -4,10 +4,12 @@
     <img src="./media/GNN2.gif" width="60%" height=60%"/>
 </p>
 
-This is the code repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The graph neural networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
+## Overview 
+
+This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The graph neural networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
 
 - All closed-shell molecules containing C, H, O, N and S.
-- Same molecules mentioned above adsorbed on the following transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
+- Same molecules mentioned above adsorbed on the following 12 transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation (Linux systems)
@@ -46,7 +48,7 @@ You have two possible modes:
 
 Within this mode, you can opt between two different options:
 
-1. You already performed some DFT calculations with VASP and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
+1. You already performed some DFT calculations with [VASP](https://www.vasp.at/) and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
 2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the `Media` directory. 
 

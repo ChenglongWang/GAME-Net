@@ -1,11 +1,6 @@
 """Convert DFT samples of the FG dataset to graph formats"""
 
-#import argparse
-#import toml
-
-from gnn_eads.functions import get_tuples, export_tuples, geometry_to_graph_analysis, get_id
-#from gnn_eads.paths import create_paths
-#from gnn_eads.constants import FG_RAW_GROUPS
+from gnn_eads.functions import get_tuples, export_tuples, geometry_to_graph_analysis
 
 
 def create_graph_datasets(graph_settings: dict, 
@@ -23,7 +18,7 @@ def create_graph_datasets(graph_settings: dict,
             scaling_factor (float): Scaling factor applied to metal atomic radii
         paths_dict (dict): Data paths
     Returns:
-       bad_samples, tot_samples (tuple[int]): total number of wrong adsorption graphs and smamples in the 
+       bad_samples, tot_samples (tuple[int]): total number of wrong adsorption graphs and samples in the 
                                               whole FG-dataset.
     """
     bad_samples = 0
@@ -50,10 +45,3 @@ def create_graph_datasets(graph_settings: dict,
         tot_samples += x[2]
     print("Bad conversions: {}/{} ({:.2f}%)".format(bad_samples, tot_samples, bad_samples*100/tot_samples))
     return bad_samples, tot_samples
-    
-# if __name__ == "__main__":
-#     PARSER = argparse.ArgumentParser(description="Convert raw DFT datasets into graph representations with the parameters provided in config.toml.")
-#     params = toml.load("config.toml")["graph_params"]
-#     graph_identifier = get_id(params)
-#     family_paths = create_paths(FG_RAW_GROUPS, "/home/santiago/Desktop/GNN/FG_dataset", graph_identifier)
-#     create_graph_datasets(params, family_paths)

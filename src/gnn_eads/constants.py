@@ -28,10 +28,14 @@ CORDERO = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
            'Xe': 1.40, 'Yb': 1.87, 'Y' : 1.90, 'Zn': 1.22, 'Zr': 1.75}  # Atomic radii from Cordero 
 
 # Atomic elements in the data and related one-hot encoder
-MOL_ELEM = ['C', 'H', 'O', 'N', 'S']  
+MOL_ELEM = ['C', 'H', 'O', 'N', 'S']    
 METALS = ['Ag', 'Au', 'Cd', 'Cu',  
           'Ir', 'Ni', 'Os', 'Pd',
-          'Pt', 'Rh', 'Ru', 'Zn']  
+          'Pt', 'Rh', 'Ru', 'Zn']
+CRYSTAL_STRUCTURES = ["fcc", "fcc", "hcp", "fcc", 
+                      "fcc", "fcc", "hcp", "fcc", 
+                      "fcc", "fcc", "hcp", "hcp"]
+CRYSTAL_STRUCTURE_DICT = dict(zip(METALS, CRYSTAL_STRUCTURES))
 NODE_FEATURES = len(MOL_ELEM) + len(METALS)
 ENCODER = OneHotEncoder().fit(np.array(MOL_ELEM + METALS).reshape(-1, 1))  
 ELEMENT_LIST = list(ENCODER.categories_[0])                                
@@ -52,17 +56,23 @@ FG_FAMILIES = ["Amides", "Amidines", "$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}O_{(0,
                "Amides", "Amidines", "Aromatics", 
                "Aromatics", "Carbamates", "$C_{x}H_{y}O_{(0,1)}$", 
                "$C_{x}H_{y}O_{(0,1)}$", "$C_{x}H_{y}N$", "$C_{x}H_{y}S$", 
-               "$C_{x}H_{y}O_{(2,3)}$", "Oximes"]  # Proper family used in project (paper, docs, etc)
+               "$C_{x}H_{y}O_{(2,3)}$", "Oximes"]  # Proper chemical family name used in manuscipts
 FAMILY_DICT = dict(zip(FG_RAW_GROUPS, FG_FAMILIES))  
 
 # Dictionaries for model training features
-loss_dict = {"mse": mse_loss, "mae": l1_loss, "huber": huber_loss}
+loss_dict = {"mse": mse_loss,
+             "mae": l1_loss,
+             "huber": huber_loss}
 pool_dict = {"GMT": GraphMultisetTransformer}
-pool_seq_dict = {"1": ["GMPool_I"], "2": ["GMPool_G"],
-                 "3": ["GMPool_G", "GMPool_I"], "4": ["GMPool_G", "SelfAtt", "GMPool_I"], 
+pool_seq_dict = {"1": ["GMPool_I"],
+                 "2": ["GMPool_G"],
+                 "3": ["GMPool_G", "GMPool_I"],
+                 "4": ["GMPool_G", "SelfAtt", "GMPool_I"], 
                  "5": ["GMPool_G", "SelfAtt", "SelfAtt", "GMPool_I"]}
-conv_layer = {"SAGE": SAGEConv, "GATv2": GATv2Conv}
-sigma_dict = {"ReLU": ReLU(), "tanh": Tanh()}
+conv_layer = {"SAGE": SAGEConv,
+              "GATv2": GATv2Conv}
+sigma_dict = {"ReLU": ReLU(),
+              "tanh": Tanh()}
 
 # Others
 DPI = 500

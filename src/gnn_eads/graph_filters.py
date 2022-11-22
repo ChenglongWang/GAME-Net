@@ -23,17 +23,16 @@ def single_fragment_filter(graph: Data):
         (bool): True = Just one single adsorbate is present in the original graph
                 False = More fragments are present on the original metal slab.
     """
-    categories = list(ENCODER.categories_[0])
     switch = []
     # Non-metal nodes are kept
     for i in range(graph.num_nodes):
         index = torch.where(graph.x[i, :] == 1)[0].item()
-        if categories[index] in METALS:
+        if ELEMENT_LIST[index] in METALS:
             switch.append(1)
         else:
             switch.append(0)
     N = switch.count(0)
-    x = torch.zeros((N, len(categories)))
+    x = torch.zeros((N, len(ELEMENT_LIST)))
     counter = 0
     func  = [None] * graph.num_nodes
     for i in range(graph.num_nodes):
@@ -51,7 +50,7 @@ def single_fragment_filter(graph: Data):
         connection = [node.item() for node in connection]
         for j in connection:
             index = torch.where(graph.x[j, :] == 1)[0].item()
-            if categories[index] in METALS:
+            if ELEMENT_LIST[index] in METALS:
                 switch = 1
         if switch ==  0:
             connections.append(connection)

@@ -12,6 +12,7 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch
+from torch.distributions import Normal
 import numpy as np
 from scipy.spatial import Voronoi
 from pymatgen.io.vasp import Outcar
@@ -41,8 +42,7 @@ def mol_to_ensemble(molecule: Molecule,
                     scaling_factor: float, 
                     second_order: bool) -> Molecule:
     """
-    Extract adsorbate + interacting metal atoms from the whole cell.
-    Function based on pyRDTP.
+    Extract adsorbate + interacting metal atoms from the adsorption cell.
     Args:
         molecule(pyRDTP.molecule.Molecule): molecule object.
         voronoi_tolerance(float): for connectivity search in pyRDTP.
@@ -90,11 +90,11 @@ def ensemble_to_graph(molecule: Molecule,
     """
     Convert pyRDTP Molecule to NetworkX graph.
     If second order neighbours are included, the metal-metal connnectons are kept.
-    If only nearest metal atoms included, this action is not performed.
+    If only nearest metal atoms included, no metal-metal edges are present in the graph.
     Args:
-        molecule(pyRDTP.molecule.Molecule): molecule object
+        molecule(pyRDTP.molecule.Molecule): molecule object.
     Returns:
-        NetworkX graph object of the input molecule    
+        NetworkX graph object of the input molecule.
     """
     elem_lst = tuple([atom.element for atom in molecule.atoms])
     connections_1 = []
@@ -116,7 +116,7 @@ def ensemble_to_graph(molecule: Molecule,
 
 def get_energy(dataset: str, paths_dict:dict) -> dict:
     """
-    Extract the raw energy label for each sample of the dataset from the energies.dat file.    
+    Extract the ground energy for each sample of the dataset from the energies.dat file.    
     Args:
         dataset(str): Dataset's title.
     Returns:
@@ -136,7 +136,8 @@ def get_structures(dataset: str, paths_dict: dict) -> dict:
     Extract the structure for each sample of the dataset from the 
     CONTCAR files in the "structures" folder.
     Args:
-        dataset(str): Dataset's title.
+        dataset (str): Dataset's title.
+        paths_dict (dict): Data paths.
     Returns:
         mol_dict(dict): Dictionary with pyRDTP.Molecule objects for each sample.  
     """
@@ -196,8 +197,8 @@ def export_tuples(filename: str,
     """
     Export processed DFT dataset into text file.
     Args:
-        filename (str): file to write
-        tuple_dict (tuple): tuple dictionary
+        filename (str): file to write.
+        tuple_dict (tuple): tuple dictionary containing all the graph information.
     """
     with open(filename, 'w') as outfile:
         for code, inter in tuple_dict.items():
@@ -344,10 +345,10 @@ def create_loaders(datasets:tuple,
     """
     Create dataloaders for training, validation and test.
     Args:
-        datasets(tuple): tuple containing the HetGraphDataset objects.
-        split(int): number of splits to generate train/val/test sets.
-        batch_size(int): batch size. Default to 32.
-        test(bool): Whether to generate train/val/test loaders or just train/val.    
+        datasets (tuple): tuple containing the HetGraphDataset objects.
+        split (int): number of splits to generate train/val/test sets.
+        batch_size (int): batch size. Default to 32.
+        test (bool): Whether to generate train/val/test loaders or just train/val.    
     Returns:
         (tuple): tuple with dataloaders for training, validation and test.
     """
@@ -393,9 +394,9 @@ def scale_target(train_loader: DataLoader,
     Apply target scaling to the whole dataset using labels of
     training and validation sets.
     Args:
-        train(torch_geometric.loader.DataLoader): training dataloader 
-        val(torch_geometric.loader.DataLoader): validation dataloader
-        test(torch_geometric.loader.DataLoader): test dataloader
+        train_loader (torch_geometric.loader.DataLoader): training dataloader 
+        val_loader (torch_geometric.loader.DataLoader): validation dataloader
+        test_loader (torch_geometric.loader.DataLoader): test dataloader
     Returns:
         train, val, test: dataloaders with scaled target values
         mean_tv, std_tv: mean and std (standardization)
@@ -463,19 +464,21 @@ def connectivity_search_voronoi(molecule: Molecule,
                                 metal_rad_dict:dict,
                                 center:bool=False) -> Molecule:
     """
-    Perform a connectivity search using the Voronoi tessellation. The method
-    considers periodic boundary conditions and CORDERO Radius (modified for metals).
+    Perform a connectivity search with the Voronoi tessellation algorithm. The method
+    considers periodic boundary conditions.
     Args:
         molecule(pyRDTP.molecule.Molecule): Input molecule for which connectivity
             search is performed.
         tolerance (float): Tolerance that will be added to the
-            medium distance between two atoms.
+            distance between two atoms.
         metal_rad_dict (dict): Dictionary of atomic radii of metals and elements
             of the model.
         center (bool, optional): If True, the direct coordinates array of
             the molecule will be centered before the bond calculation to
             avoid errors in far from the box molecules. The coordinates
             of the molecule will not change.
+    Returns:
+        molecule (pyRDTP.molecule.Molecule): molecule object with defined connectivity.
     """
     if len(molecule.atoms) == 1:
         return molecule
@@ -540,9 +543,9 @@ def train_loop(model,
         optimizer(): optimizer used during training.
         loss_fn(): Loss function used for the training.
     Returns:
-        loss_all(float): Mean Squared Error (MSE) of the whole epoch.   
+        loss_all, mae_all (tuple[float]): Loss function and MAE of the whole epoch.   
     """
-    model.train()  # Sets model in training mode
+    model.train()  
     loss_all = 0
     mae_all = 0
     for batch in train_loader:
@@ -550,13 +553,13 @@ def train_loop(model,
         optimizer.zero_grad()                     # Set gradients of all tensors to zero
         loss = loss_fn(model(batch), batch.y)
         mae = F.l1_loss(model(batch), batch.y)    # For comparison with val/test data
-        loss.backward()                           # Compute gradient of loss function wrt parameters
+        loss.backward()                           # Get gradient of loss function wrt parameters
         loss_all += loss.item() * batch.num_graphs
         mae_all += mae.item() * batch.num_graphs
         optimizer.step()                          # Update model parameters
     loss_all /= len(train_loader.dataset)
     mae_all /= len(train_loader.dataset)
-    return loss_all, mae_all 
+    return loss_all, mae_all
 
 
 def test_loop(model,
@@ -567,7 +570,7 @@ def test_loop(model,
               scaled_graph_label: bool= True, 
               verbose: int=0) -> float:
     """
-    Helper function for validation/testing.
+    Helper function for validation/testing loop.
     For each batch in the validation/test epoch, the following actions are performed:
     1) Set the GNN model in evaluation mode
     2) Move the batch to the selected device where the model is stored
@@ -583,7 +586,7 @@ def test_loop(model,
     Returns:
         error(float): Mean Absolute Error (MAE) of the test loader.
     """
-    model.eval()   # Sets model in inference mode
+    model.eval()   
     error = 0
     for batch in loader:
         batch = batch.to(device)
@@ -604,7 +607,7 @@ def get_mean_std_from_model(path:str) -> tuple[float]:
        from the selected trained model.
 
     Args:
-        model_name (str): GNN model name
+        model_name (str): GNN model path.
     
     Returns:
         mean, std (tuple[float]): mean and standard deviation for scaling the targets.
@@ -623,7 +626,7 @@ def get_graph_conversion_params(path: str) -> tuple:
     """Get the hyperparameters for geometry->graph conversion algorithm.
 
     Args:
-        path (str): path to model
+        path (str): path to GNN model.
 
     Returns:
         tuple: voronoi tolerance (float), scaling factor (float), metal nearest neighbours inclusion (bool)
@@ -652,9 +655,10 @@ def contcar_to_graph(contcar_file: str,
 
     Args:
         contcar_file (str): Path to CONTCAR file.
-        voronoi_tolerance (float, optional): Tolerance applied during the graph conversion.
-        atomic_radius_dict (dict, optional): Atomic radius dictionary. Defaults to CORDERO.
-        one_hot_encoder (_type_, optional): One-hot encoder. Defaults to encoder.
+        voronoi_tolerance (float): Tolerance applied during the graph conversion.
+        scaling_factor (float): Scaling factor applied to metal radius of metals.
+        second_order (bool): whether 2nd-order metal atoms are included.
+        one_hot_encoder ( optional): One-hot encoder. Defaults to ENCODER.
 
     Returns:
         graph (torch_geometric.data.Data): Graph object representing the system under study.
@@ -714,13 +718,14 @@ def get_graph_sample(system: str,
 
 def get_id(graph_params: dict) -> str:
     """
-    Return string associated to a specific graph representation setting, 
+    Returns string identifier associated to a specific graph representation setting, 
     consistsing of tolerance, scaling factor, 2-hop metals inclusion in the 
     conversion from geometry to graph.
     Args
-        graph_params (dict): must contain the keys below
+        graph_params (dict): dictionary containing graph settings:
+            {"voronoi_tol": (float), "second_order_nn": (bool), "scaling_factor": float}
     Returns
-        pre_id (str)
+        identifier (str): String defining graph settings.
     """
     identifier = str(graph_params["voronoi_tol"]).replace(".","")
     identifier += "_"
@@ -732,7 +737,7 @@ def get_id(graph_params: dict) -> str:
 
 
 def surf(metal:str) -> str:
-    """Returns metal facet as function of metal present in the FG-dataset.
+    """Returns metal facet considered as function of metal present in the FG-dataset.
     Args:
         metal (str): Metal symbol
 
@@ -743,5 +748,4 @@ def surf(metal:str) -> str:
     if metal in ["Ag", "Au", "Cu", "Ir", "Ni", "Pd", "Pt", "Rh"]:
         return "111"
     else:
-        return "0001"
-    
+        return "0001"    

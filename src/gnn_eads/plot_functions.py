@@ -333,7 +333,6 @@ def training_plot(train: list, val: list, test: list, split: int):
     ax.set_xlabel("Epoch", fontsize=18)
     ax.set_xlim([-1, len(train)+1])
     ax.set_ylabel("MAE / eV", fontsize=18)
-    ax.set_ylim([0.0, 1.2])
     ax.legend(fontsize=12)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
