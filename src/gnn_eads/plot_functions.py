@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
+import torch
 
 from gnn_eads.functions import split_percentage
 from gnn_eads.constants import DPI
@@ -458,4 +459,23 @@ def training_plot_gif(train: list, val: list, test: list):
     plt.yticks(fontsize=12)
     #ax.grid()
     plt.ioff()
-    return fig, ax    
+    return fig, ax 
+
+def error_dist_test_gif(test_loader, model, std):
+    error_test = []
+    loader = DataLoader(test_loader.dataset, batch_size=len(test_loader.dataset))
+    for batch in loader:
+        batch.to("cuda")
+        ygnn = model(batch)
+    ygnn = ygnn.detach().cpu().numpy() 
+    torch.cuda.empty_cache()
+    for i in range(len(test_loader.dataset)):
+        error_test.append((test_loader.dataset[i].y.item() - ygnn[i])*std)
+    fig, ax = plt.subplots(figsize=(12/2.54, 12/2.54), dpi=300)
+    sns.displot(error_test, bins=50, kde=True)
+    plt.xlim((-7.5, 7.5))
+    plt.ylim((0, 35))
+    plt.xlabel("Error / eV")
+    plt.ylabel("Count / -") 
+    plt.ioff()
+    return fig, ax

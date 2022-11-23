@@ -1,4 +1,6 @@
 """Module containing the Graph Neural Network architectures."""
+import os.path as osp
+import datetime
 
 import torch
 from torch.nn import Linear
@@ -205,6 +207,14 @@ class PreTrainedModel():
         self.mean, self.std = get_mean_std_from_model(self.model_path)
         # Graph conversion parameters
         self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(self.model_path)
+        
+    def __repr__(self) -> str:
+        string = "GNN pretrained model for DFT ground state energy prediction."
+        creation_date = datetime.datetime.fromtimestamp(osp.getctime(self.model_path))
+        string += "\nCreation date: {}".format(creation_date)
+        string += "\nModel path: {}".format(osp.abspath(self.model_path))
+        string += "\nModel size: {} parameters".format(sum(p.numel() for p in self.model.parameters()))
+        return string
     
     def evaluate(self, graph: Data) -> float:
         """Evaluate graph energy

@@ -3,6 +3,7 @@
 from itertools import product
 import math
 from collections import namedtuple
+from subprocess import Popen, PIPE
 
 from sklearn.preprocessing import OneHotEncoder
 from pyRDTP.geomio import file_to_mol
@@ -651,7 +652,7 @@ def contcar_to_graph(contcar_file: str,
                      scaling_factor: dict,
                      second_order: bool, 
                      one_hot_encoder=ENCODER) -> Data:
-    """Create graph representation from VASP CONTCAR file
+    """Create graph representation of chemical structure from VASP CONTCAR.
 
     Args:
         contcar_file (str): Path to CONTCAR file.
@@ -673,8 +674,7 @@ def contcar_to_graph(contcar_file: str,
     elem_enc = one_hot_encoder.transform(elem_array).toarray()
     edge_index = torch.tensor([source, target], dtype=torch.long)
     x = torch.tensor(elem_enc, dtype=torch.float)
-    graph = Data(x=x, edge_index=edge_index)
-    return graph
+    return Data(x=x, edge_index=edge_index)
 
 
 def get_graph_sample(system: str, 
@@ -704,9 +704,15 @@ def get_graph_sample(system: str,
                              scaling_factor=scaling_factor,
                              second_order=second_order, 
                              one_hot_encoder=encoder) # Graph structure
-    graph.y = Outcar("{}/OUTCAR".format(system)).final_energy  # Graph label
+    p1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(system)], stdout=PIPE)
+    p2 = Popen(["tail", "-1"], stdin=p1.stdout, stdout=PIPE)
+    p3 = Popen(["awk", "{print $NF}"], stdin=p2.stdout, stdout=PIPE)
+    graph.y = float(p3.communicate()[0].decode("utf-8"))
     if gas_mol == False:
-        surf_energy = Outcar("{}/OUTCAR".format(surface)).final_energy
+        ps1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(surface)], stdout=PIPE)
+        ps2 = Popen(["tail", "-1"], stdin=ps1.stdout, stdout=PIPE)
+        ps3 = Popen(["awk", "{print $NF}"], stdin=ps2.stdout, stdout=PIPE)
+        surf_energy = float(ps3.communicate()[0].decode("utf-8"))
         if surf_multiplier is not None:
             surf_energy *= surf_multiplier
         graph.y -= surf_energy  
