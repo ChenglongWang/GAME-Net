@@ -8,6 +8,7 @@ sys.path.insert(0, "../src")
 
 import torch 
 import toml
+import matplotlib.pyplot as plt
 
 from gnn_eads.functions import create_loaders, scale_target, train_loop, test_loop, get_id
 from gnn_eads.nets import FlexibleNet
@@ -16,17 +17,21 @@ from gnn_eads.create_graph_datasets import create_graph_datasets
 from gnn_eads.constants import FG_RAW_GROUPS, loss_dict, pool_seq_dict, conv_layer, sigma_dict, pool_dict
 from gnn_eads.paths import create_paths
 from gnn_eads.processed_datasets import create_post_processed_datasets
+from gnn_eads.plot_functions import error_dist_test_gif
 
 
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="Perform a training process with the provided hyperparameter settings.")
     PARSER.add_argument("-i", "--input", type=str, dest="i", 
                         help="Input toml file with hyperparameters for the learning process.")
+    PARSER.add_argument("-o", "--output", type=str, dest="o", 
+                        help="Output directory for the results.")
     ARGS = PARSER.parse_args()
     
     output_name = ARGS.i.split("/")[-1].split(".")[0]
-    if isdir("../models/{}".format(output_name)):
-        output_name = input("There is already a model with the chosen name, please provide a new one: ")
+    output_directory = ARGS.o
+    if isdir("{}/{}".format(output_directory, output_name)):
+        output_name = input("There is already a model with the chosen name in the provided directory, provide a new one: ")
     
     # Upload training hyperparameters from toml file
     HYPERPARAMS = toml.load(ARGS.i)  
@@ -114,11 +119,15 @@ if __name__ == "__main__":
         loss_list.append(loss)
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
+        # fig, ax = error_dist_test_gif(test_loader, model, std)
+        # plt.savefig("../Extra/gif/test_distribution_{}".format(epoch), dpi=300, bbox_inches='tight')
+        # plt.close()
     print("-----------------------------------------------------------------------------------------")
     training_time = (time.time() - t0)/60  
     print("Training time: {:.2f} min".format(training_time))
     device_dict["training_time"] = training_time
     create_model_report(output_name,
+                        output_directory,
                         HYPERPARAMS,  
                         model, 
                         (train_loader, val_loader, test_loader),
