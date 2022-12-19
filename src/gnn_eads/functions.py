@@ -754,4 +754,24 @@ def surf(metal:str) -> str:
     if metal in ["Ag", "Au", "Cu", "Ir", "Ni", "Pd", "Pt", "Rh"]:
         return "111"
     else:
-        return "0001"    
+        return "0001"  
+    
+class EarlyStopper:
+    """Early stopper for training loop.
+    """
+    def __init__(self, patience: int, min_delta: float):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_validation_loss = np.inf
+        
+    def early_stop(self, validation_loss: float) -> bool:
+        if validation_loss < self.min_validation_loss:
+            self.min_validation_loss = validation_loss
+            self.counter = 0
+        elif validation_loss > self.min_validation_loss + self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
+          

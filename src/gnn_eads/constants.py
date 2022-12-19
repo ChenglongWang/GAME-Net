@@ -29,11 +29,11 @@ CORDERO = {'Ac': 2.15, 'Al': 1.21, 'Am': 1.80, 'Sb': 1.39, 'Ar': 1.06,
 
 # Atomic elements in the data and related one-hot encoder
 MOL_ELEM = ['C', 'H', 'O', 'N', 'S']    
-METALS = ['Ag', 'Au', 'Cd', 'Cu',  
-          'Ir', 'Ni', 'Os', 'Pd',
-          'Pt', 'Rh', 'Ru', 'Zn']
-CRYSTAL_STRUCTURES = ["fcc", "fcc", "hcp", "fcc", 
-                      "fcc", "fcc", "hcp", "fcc", 
+METALS = ['Ag', 'Au', 'Cd', 'Co', 'Cu',  
+           'Fe', 'Ir', 'Ni', 'Os', 'Pd',
+           'Pt', 'Rh', 'Ru', 'Zn']
+CRYSTAL_STRUCTURES = ["fcc", "fcc", "hcp", "hcp", "fcc", 
+                      "bcc", "fcc", "fcc", "hcp", "fcc", 
                       "fcc", "fcc", "hcp", "hcp"]
 CRYSTAL_STRUCTURE_DICT = dict(zip(METALS, CRYSTAL_STRUCTURES))
 NODE_FEATURES = len(MOL_ELEM) + len(METALS)
