@@ -18,7 +18,7 @@ import numpy as np
 from scipy.spatial import Voronoi
 from pymatgen.io.vasp import Outcar
  
-from gnn_eads.constants import CORDERO, METALS, MOL_ELEM, FG_RAW_GROUPS, ENCODER
+from gnn_eads.constants import CORDERO, METALS, MOL_ELEM, FG_RAW_GROUPS, ENCODER, ELEMENT_LIST
 
 
 def split_percentage(splits: int, test: bool=True) -> tuple[int]:
@@ -256,7 +256,7 @@ def geometry_to_graph_analysis(dataset:str, paths_dict:dict):
 
 
 def get_graph_formula(graph: Data,
-                      categories,
+                      categories: list=ELEMENT_LIST,
                       metal_list: list=METALS) -> str:
     """ 
     Create a string label for the selected graph.
