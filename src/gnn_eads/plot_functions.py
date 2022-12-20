@@ -88,6 +88,61 @@ def violinplot_family(model,
     return fig, ax  
 
 
+def violinplot_metal(model,
+                     loader,
+                     std_tv: float,
+                     metals: list[str],
+                     device :str="cpu"):
+    """"
+    Generate violinplot sorted by metal.
+    """
+    metal_dict = {}
+    error_dict = {}
+    error_list = []
+    metal_list = []
+    fig, ax = plt.subplots(figsize=(8/2.54, 4.94/2.54), dpi=DPI)
+    params = {'mathtext.default': 'regular' }          
+    plt.rcParams.update(params)
+    x = "$\mathit{E}_{GNN}-\mathit{E}_{DFT}$ / eV"
+    for metal in metals:
+        checker = lambda x: metal in x.formula
+        metal_dict[label] = list(filter(checker, loader.dataset)) 
+        error = np.zeros(len(metal_dict[metal]))
+        y_GNN = np.zeros(len(metal_dict[metal]))
+        model.to(device)
+        model.eval()
+        metal_loader = DataLoader(metal_dict[metal], batch_size=len(metal_dict[metal]))
+        for batch in metal_loader:
+            y_GNN = model(batch)
+        y_GNN = y_GNN.detach().numpy()           
+        for i in range(len(metal_dict[metal])): 
+            y_DFT = metal_dict[label][i].y           
+            error[i] = -(y_DFT - y_GNN[i]) * std_tv
+        error_dict[metal] = list(error)
+        for item in error_dict[metal]:
+            error_list.append(item) 
+    for label in metals:
+        for i in range(len(error_dict[label])):
+            metal_list.append(label)
+    df = pd.DataFrame(data={x: np.asarray(error_list, dtype=float), "Metal": metal_list})
+    custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+    sns.set_theme(style="ticks", rc=custom_params)
+    ax = sns.violinplot(y=x, x="Metal", data=df, orient="v",
+                        scale="width", linewidth=0.5, palette="pastel",
+                        bw="scott", zorder=1)     
+    ax.set_xlim([-0.5, 8.5])  
+    ax.set_ylim([-1.75, 1.75])
+    plt.xticks(rotation=45, ha='right', rotation_mode='anchor')
+    plt.tick_params(axis='x', which='both', bottom=False)
+    ax.grid(False)
+    #ax.set_xlabel(None)
+    #ax.set_xticklabels([]) # Comment this line if you want to display the family names!
+    ax.hlines(0, -1, 10, linestyles="dotted", zorder=0, lw=0.5, color="black")
+    ax.yaxis.set_major_locator(MaxNLocator(5)) 
+    plt.ioff()
+    return fig, ax  
+
+
 def E_violinplot_train(model,
                        loader,
                        std_tv,

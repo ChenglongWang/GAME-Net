@@ -14,10 +14,10 @@ from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
 #from torchinfo import summary
 
-from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI
+from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI, METALS
 from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from gnn_eads.graph_tools import plotter
-from gnn_eads.plot_functions import hist_num_atoms, violinplot_family, DFTvsGNN_plot, pred_real, training_plot, label_dist_train_val_test
+from gnn_eads.plot_functions import *
 
 
 def create_model_report(model_name: str,
@@ -178,7 +178,11 @@ def create_model_report(model_name: str,
     plt.close()
     # Violinplot sorted by chemical family
     fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
-    plt.savefig("{}/{}/test_violin.svg".format(model_path, model_name), bbox_inches='tight')
+    plt.savefig("{}/{}/test_violin_family.svg".format(model_path, model_name), bbox_inches='tight')
+    plt.close()
+    # Violinplot sorted by metal
+    fig, ax = violinplot_metal(model, test_loader, std_tv, METALS)
+    plt.savefig("{}/{}/test_violin_metal.svg".format(model_path, model_name), bbox_inches='tight')
     plt.close()
     # Parity plot (GNN vs DFT) for train, val, test
     my_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
