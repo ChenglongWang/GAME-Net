@@ -4,6 +4,7 @@ from itertools import product
 import math
 from collections import namedtuple
 from subprocess import Popen, PIPE
+from copy import copy, deepcopy
 
 from sklearn.preprocessing import OneHotEncoder
 from pyRDTP.geomio import file_to_mol
@@ -774,4 +775,46 @@ class EarlyStopper:
             if self.counter >= self.patience:
                 return True
         return False
+
+
+def split_list(a: list, n: int):
+    """
+    Split a list into n chunks.
+    Args:
+        a(list): list to split
+        n(int): number of chunks
+    Returns:
+        (list): list of chunks
+    """
+    k, m = divmod(len(a), n)
+    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
+
+def create_loaders_nested_cv(datasets: tuple, split: int, batch_size: int):
+    """
+    Create dataloaders for training, validation and test for nested cross validation purposes.
+    Args:
+        datasets(tuple): tuple containing the HetGraphDataset objects.
+        split(int): number of splits to generate train/val/test sets
+        batch(int): batch size    
+    Returns:
+        (tuple): tuple with dataloaders for training, validation and testing.
+    """
+    # Create list of lists, where each list contains the datasets for a split.
+    chunk = [[] for _ in range(split)]
+    for dataset in datasets:
+        dataset.shuffle()
+        iterator = split_list(dataset, split)
+        for index, item in enumerate(iterator):
+            chunk[index] += item
+        chunk = sorted(chunk, key=len)
+    # Create dataloaders for each split.    
+    for index in range(len(chunk)):
+        proxy = copy(chunk)
+        test_loader = DataLoader(proxy.pop(index), batch_size=batch_size, shuffle=False)
+        for index2 in range(len(proxy)):  # length is reduced by 1 here
+            proxy2 = copy(proxy)
+            val_loader = DataLoader(proxy2.pop(index2), batch_size=batch_size, shuffle=False)
+            flatten_training = [item for sublist in proxy2 for item in sublist]  # flatten list of lists
+            train_loader = DataLoader(flatten_training, batch_size=batch_size, shuffle=True)
+            yield deepcopy((train_loader, val_loader, test_loader))
           

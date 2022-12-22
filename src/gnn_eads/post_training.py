@@ -139,6 +139,9 @@ def create_model_report(model_name: str,
         return "Model saved in {}/{}".format(model_path, model_name)
     
     test_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in test_loader.dataset]
+    test_family_list = [graph.family for graph in test_loader.dataset]
+    train_family_list = [graph.family for graph in train_loader.dataset]
+    val_family_list = [graph.family for graph in val_loader.dataset]
     N_test = len(test_loader.dataset)  
     N_tot = N_train + N_val + N_test    
     model.eval()
@@ -181,9 +184,9 @@ def create_model_report(model_name: str,
     plt.savefig("{}/{}/test_violin_family.svg".format(model_path, model_name), bbox_inches='tight')
     plt.close()
     # Violinplot sorted by metal
-    fig, ax = violinplot_metal(model, test_loader, std_tv, METALS)
-    plt.savefig("{}/{}/test_violin_metal.svg".format(model_path, model_name), bbox_inches='tight')
-    plt.close()
+    # fig, ax = violinplot_metal(model, test_loader, std_tv, METALS)
+    # plt.savefig("{}/{}/test_violin_metal.svg".format(model_path, model_name), bbox_inches='tight')
+    # plt.close()
     # Parity plot (GNN vs DFT) for train, val, test
     my_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
     for key, value in my_dict.items():
@@ -281,14 +284,14 @@ def create_model_report(model_name: str,
     # Save train, val, test set error of the samples            
     with open("{}/{}/test_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(test_label_list, y_true, y_pred, error_test, abs_error_test))    
+        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(test_label_list, test_family_list, y_true, y_pred, error_test, abs_error_test))    
     with open("{}/{}/train_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(train_label_list, z_true, z_pred, error_train, abs_error_train))    
+        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(train_label_list, train_family_list, z_true, z_pred, error_train, abs_error_train))    
     with open("{}/{}/validation_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(val_label_list, b_true, b_pred, error_val, abs_error_val))
+        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
+        writer.writerows(zip(val_label_list, val_family_list, b_true, b_pred, error_val, abs_error_val))
     return "Model saved in {}/{}".format(model_path, model_name)

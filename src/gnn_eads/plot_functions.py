@@ -106,7 +106,7 @@ def violinplot_metal(model,
     x = "$\mathit{E}_{GNN}-\mathit{E}_{DFT}$ / eV"
     for metal in metals:
         checker = lambda x: metal in x.formula
-        metal_dict[label] = list(filter(checker, loader.dataset)) 
+        metal_dict[metal] = list(filter(checker, loader.dataset)) 
         error = np.zeros(len(metal_dict[metal]))
         y_GNN = np.zeros(len(metal_dict[metal]))
         model.to(device)
