@@ -150,7 +150,7 @@ if __name__ == "__main__":
     ncv_results = listdir(output_directory + "/" + output_name)
     df = pd.DataFrame()
     for run in ncv_results:
-        results = pd.read_csv(output_directory + "/" + output_name + "/testset.csv", sep="\t")
+        results = pd.read_csv(output_directory + "/" + output_name + "/" + run + "/test_set.csv", sep="\t")
         # add column with run number
         results["run"] = run
         df = pd.concat([df, results], axis=0)
