@@ -12,7 +12,6 @@ import csv
 import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
-#from torchinfo import summary
 
 from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI, METALS
 from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
@@ -82,8 +81,9 @@ def create_model_report(model_name: str,
     train_list = mae_lists[0]
     val_list = mae_lists[1]
     test_list = mae_lists[2]
-    
-    # Create directory where to store model files
+    lr_list = mae_lists[3]
+
+    # Create directory structures where to store model files
     try:
         os.mkdir("{}/{}".format(model_path, model_name))
     except FileExistsError:
@@ -107,6 +107,19 @@ def create_model_report(model_name: str,
     # Store Hyperparameters dict from input file
     with open('{}/{}/input.txt'.format(model_path, model_name), 'w') as g:
         print(configuration_dict, file=g)
+
+    # Store train_list, val_list, test_list, lr_list in a csv file
+    with open('{}/{}/training.csv'.format(model_path, model_name), 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        if train["test_set"] == False:
+            writer.writerow(["Epoch", "Train_MAE_eV", "Val_MAE_eV", "Learning_Rate"])
+            for i in range(len(train_list)):
+                writer.writerow([i+1, train_list[i], val_list[i], lr_list[i]])
+        else:
+            writer.writerow(["Epoch", "Train_MAE_eV", "Val_MAE_eV", "Test_MAE_eV", "Learning_Rate"])
+            for i in range(len(train_list)):
+                writer.writerow([i+1, train_list[i], val_list[i], test_list[i], lr_list[i]])
+
     
     loss = train["loss_function"] 
         

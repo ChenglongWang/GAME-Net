@@ -99,7 +99,7 @@ if __name__ == "__main__":
                                                               factor=train["factor"],
                                                               patience=train["patience"],
                                                               min_lr=train["minlr"])    
-    loss_list, train_list, val_list, test_list = [], [], [], []         
+    loss_list, train_list, val_list, test_list, lr_list = [], [], [], [], []         
     t0 = time.time()
     # Run the learning    
     for epoch in range(1, train["epochs"]+1):
@@ -110,15 +110,16 @@ if __name__ == "__main__":
         lr_scheduler.step(val_MAE)
         if train["test_set"]:
             test_MAE = test_loop(model, test_loader, device, std, mean)         
+            test_list.append(test_MAE)
             print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.4f} eV  Validation MAE: {:.4f} eV '             
                   'Test MAE: {:.4f} eV'.format(epoch, lr, train_MAE*std, val_MAE, test_MAE))
-            test_list.append(test_MAE)
         else:
             print('Epoch {:03d}: LR={:.7f}  Train MAE: {:.6f} eV  Validation MAE: {:.6f} eV '
                   .format(epoch, lr, train_MAE*std, val_MAE))         
         loss_list.append(loss)
         train_list.append(train_MAE * std)
         val_list.append(val_MAE)
+        lr_list.append(lr)
         # fig, ax = error_dist_test_gif(test_loader, model, std)
         # plt.savefig("../Extra/gif/test_distribution_{}".format(epoch), dpi=300, bbox_inches='tight')
         # plt.close()
@@ -132,5 +133,5 @@ if __name__ == "__main__":
                         model, 
                         (train_loader, val_loader, test_loader),
                         (mean, std),
-                        (train_list, val_list, test_list), 
+                        (train_list, val_list, test_list, lr_list), 
                         device_dict)

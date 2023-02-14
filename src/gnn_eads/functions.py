@@ -341,8 +341,8 @@ def get_number_atoms_from_label(formula:str,
 
 
 def create_loaders(datasets:tuple,
-                   split: int=5,
-                   batch_size:int =32,
+                   split: int,
+                   batch_size:int,
                    test:bool=True) -> tuple[DataLoader]:
     """
     Create dataloaders for training, validation and test.
@@ -404,18 +404,21 @@ def scale_target(train_loader: DataLoader,
         mean_tv, std_tv: mean and std (standardization)
         min_tv, max_tv: min and max (normalization)
     """
-    # 1) Get mean-std/min-max from train and validation sets
+    # 1) Get target scaling coefficients from train and validation sets
     y_list = []
     for graph in train_loader.dataset:
         y_list.append(graph.y.item())
     for graph in val_loader.dataset:
         y_list.append(graph.y.item())
     y_tensor = torch.tensor(y_list)
-    mean_tv = y_tensor.mean(dim=0, keepdim=True)  # _tv stands for "train+validation sets"
+    # Standardization
+    mean_tv = y_tensor.mean(dim=0, keepdim=True)  
     std_tv = y_tensor.std(dim=0, keepdim=True)
+    # Normalization
     max_tv = y_tensor.max()
     min_tv = y_tensor.min()
-    # 2) Apply Scaling (Standardization or Normalization)
+    delta_norm = max_tv - min_tv
+    # 2) Apply Scaling
     for graph in train_loader.dataset:
         if mode == "std":
             graph.y = (graph.y - mean_tv) / std_tv
@@ -457,7 +460,7 @@ def scale_target(train_loader: DataLoader,
         else:
             return train_loader, val_loader, None, min_tv.item(), max_tv.item()
     else:
-        print("Target Scaling NOT applied")
+        print("Target Scaling not applied")
         return train_loader, val_loader, test_loader, 0, 1
 
 
@@ -653,14 +656,14 @@ def contcar_to_graph(contcar_file: str,
                      scaling_factor: dict,
                      second_order: bool, 
                      one_hot_encoder=ENCODER) -> Data:
-    """Create graph representation of chemical structure from VASP CONTCAR.
+    """Create graph representation of chemical structure from VASP CONTCAR/POSCAR.
 
     Args:
-        contcar_file (str): Path to CONTCAR file.
+        contcar_file (str): Path to CONTCAR/POSCAR file.
         voronoi_tolerance (float): Tolerance applied during the graph conversion.
         scaling_factor (float): Scaling factor applied to metal radius of metals.
         second_order (bool): whether 2nd-order metal atoms are included.
-        one_hot_encoder ( optional): One-hot encoder. Defaults to ENCODER.
+        one_hot_encoder (optional): One-hot encoder. Defaults to ENCODER.
 
     Returns:
         graph (torch_geometric.data.Data): Graph object representing the system under study.
@@ -686,7 +689,8 @@ def get_graph_sample(system: str,
                      encoder: OneHotEncoder=ENCODER,
                      gas_mol: bool=False,
                      family: str=None, 
-                     surf_multiplier: int=None) -> Data:
+                     surf_multiplier: int=None, 
+                     from_poscar: bool=False) -> Data:
     """ 
     Generate labelled graph samples from VASP simulations.
     
@@ -700,7 +704,9 @@ def get_graph_sample(system: str,
     Returns: 
         graph (Data): Labelled graph sample
     """
-    graph = contcar_to_graph("{}/CONTCAR".format(system),
+    
+    vasp_geometry_file = "POSCAR" if from_poscar else "CONTCAR"
+    graph = contcar_to_graph("{}/{}".format(system, vasp_geometry_file),
                              voronoi_tolerance=voronoi_tolerance, 
                              scaling_factor=scaling_factor,
                              second_order=second_order, 
@@ -726,12 +732,12 @@ def get_graph_sample(system: str,
 def get_id(graph_params: dict) -> str:
     """
     Returns string identifier associated to a specific graph representation setting, 
-    consistsing of tolerance, scaling factor, 2-hop metals inclusion in the 
-    conversion from geometry to graph.
-    Args
+    consisting of tolerance, scaling factor, 2-hop metals inclusion used to convert
+    a chemical structure to a graph.
+    Args:
         graph_params (dict): dictionary containing graph settings:
             {"voronoi_tol": (float), "second_order_nn": (bool), "scaling_factor": float}
-    Returns
+    Returns:
         identifier (str): String defining graph settings.
     """
     identifier = str(graph_params["voronoi_tol"]).replace(".","")
@@ -791,7 +797,7 @@ def split_list(a: list, n: int):
 
 def create_loaders_nested_cv(datasets: tuple, split: int, batch_size: int):
     """
-    Create dataloaders for training, validation and test for nested cross validation purposes.
+    Create dataloaders for training, validation and test sets for nested cross-validation.
     Args:
         datasets(tuple): tuple containing the HetGraphDataset objects.
         split(int): number of splits to generate train/val/test sets

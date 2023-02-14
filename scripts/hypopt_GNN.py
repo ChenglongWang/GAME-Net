@@ -27,7 +27,7 @@ HYPERPARAMS = {}
 HYPERPARAMS["voronoi_tol"] = 0.5   
 HYPERPARAMS["scaling_factor"] = 1.5
 HYPERPARAMS["second_order_nn"] = False
-HYPERPARAMS["data"] = "/home/santiago/Desktop/GNN/data/FG_dataset"
+HYPERPARAMS["data"] = "/home/smorandi/Desktop/gnn_eads/data/FG_dataset"
 # Process-related
 HYPERPARAMS["test_set"] = True          
 HYPERPARAMS["splits"] = 10              
@@ -70,7 +70,7 @@ PARSER.add_argument("-o", "--output", type=str, dest="o",
 PARSER.add_argument("-s", "--samples", default=5, type=int, dest="s",
                     help="Number of trials of the search.")
 PARSER.add_argument("-v", "--verbose", default=1, type=int, dest="v",
-                    help="Verbosity of tune.run() function")
+                    help="Verbosity of the hyperparameter optimization.")
 PARSER.add_argument("-gr", "--grace", default=15, type=int, dest="grace", 
                     help="Grace period of ASHA.")
 PARSER.add_argument("-maxit", "--max-iterations", default=150, type=int, dest="max_iter", 
@@ -80,7 +80,9 @@ PARSER.add_argument("-rf", "--reduction-factor", default=4, type=int, dest="rf",
 PARSER.add_argument("-bra", "--brackets", default=1, type=int, dest="bra", 
                     help="Number of brackets of ASHA.")
 PARSER.add_argument("-gpt", "--gpu-per-trial", default=1.0, type=float, dest="gpu_per_trial", 
-                    help="Number of gpus per trial (can be fractional).")    
+                    help="Number of gpus per trial (can be fractional).") 
+PARSER.add_argument("-t", "--time-budget", default=24*3600, type=int, dest="time_budget", 
+                    help="Time budget (in seconds) for the hyperparameter optimization.")
 ARGS = PARSER.parse_args()
 
 def get_hyp_space(config: dict):
@@ -183,10 +185,11 @@ def main():
     print("Hyperparameters investigated: {}".format(counter))
     print("Hyperparameter space: {} possible combinations".format(x))
     print("Number of trials: {} ({:.2f} % of space covered)".format(ARGS.s, ARGS.s/x))
+    print("Time budget: {} seconds ({:.2f} hours)".format(ARGS.time_budget, ARGS.time_budget/3600))
     ray.init(ignore_reinit_error=True, runtime_env={"working_dir": "../src/"}) 
     result = tune.run(train_function,
                       name=ARGS.o,
-                      time_budget_s=3600*24,
+                      time_budget_s=ARGS.time_budget,
                       config=HYPERPARAMS,
                       scheduler=hypopt_scheduler,
                       resources_per_trial={"cpu":1, "gpu":ARGS.gpu_per_trial},

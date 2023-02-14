@@ -22,7 +22,7 @@ cs = ChemSpider(CHEMSPIPY)
 to_int = lambda x: [float(i) for i in x]
     
 # 1) Load model
-MODEL_PATH = "../models/best_model"    
+MODEL_PATH = "../models/GAME-Net"    
 model = PreTrainedModel(MODEL_PATH)
 
 #2) Interactive section

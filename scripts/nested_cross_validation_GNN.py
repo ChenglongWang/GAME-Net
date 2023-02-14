@@ -110,7 +110,7 @@ if __name__ == "__main__":
                                                                       factor=train["factor"],
                                                                       patience=train["patience"],
                                                                       min_lr=train["minlr"])    
-            loss_list, train_list, val_list, test_list = [], [], [], []         
+            loss_list, train_list, val_list, test_list, lr_list = [], [], [], [], []         
             t0 = time.time()
             # Run the learning    
             for epoch in range(1, train["epochs"]+1):
@@ -126,6 +126,7 @@ if __name__ == "__main__":
                 loss_list.append(loss)
                 train_list.append(train_MAE * std)
                 val_list.append(val_MAE)
+                lr_list.append(lr)
                 if epoch == train["epochs"]:
                     MAE_inner.append(test_MAE)
             print("-----------------------------------------------------------------------------------------")
@@ -138,7 +139,7 @@ if __name__ == "__main__":
                                 model, 
                                 (train_loader, val_loader, test_loader),
                                 (mean, std),
-                                (train_list, val_list, test_list), 
+                                (train_list, val_list, test_list, lr_list), 
                                 device_dict)
             del model, optimizer, lr_scheduler, train_loader, val_loader, test_loader
             if device == "cuda":

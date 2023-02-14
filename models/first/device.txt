@@ -1,1 +1,0 @@
-{'name': 'NVIDIA GeForce MX450', 'CudaDNN_enabled': True, 'CUDNN_version': 8200, 'CUDA_version': '11.3', 'training_time': 4.574146362145742}

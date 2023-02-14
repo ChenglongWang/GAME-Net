@@ -6,10 +6,10 @@
 
 ## Overview 
 
-This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f). The graph neural networks developed within this framework allow the fast prediction of the DFT ground state energy of the following systems:
+This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f), where we introduce GAME-Net (*Graph-based Adsorption on Metal Energy-neural Network*), a graph neural network developed for the fast prediction of the DFT ground state energy of the following systems:
 
-- All closed-shell molecules containing C, H, O, N and S.
-- Same molecules mentioned above adsorbed on the following 12 transition metals: Ag, Au, Cd, Cu, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
+- Closed-shell molecules containing C, H, O, N and S.
+- Same mentioned molecules adsorbed on the following 14 transition metals: Ag, Au, Cd, Co, Cu, Fe, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
 
 The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
 ## Installation (Linux systems)
@@ -63,17 +63,26 @@ Within this mode, you can choose among two available ways to use the GNN:
     `python train_GNN.py -i hyper_config.toml`
 
     To check the documentation of the script, type `python train_GNN.py -h`.
-2. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
+
+2. Run a nested cross-validation to assess the generalization performance on the FG-dataset. The script for this task is `nested_cross_validation_GNN.py`.
+
+3. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function, epochs) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
 
     `python hypopt_GNN.py -o hypopt_test -s 2000 -gr 15 -gpt 0.5`
 
+
+## Notebooks
+
+To reproduce some of the results presented in the article, we provide some Jupyter notebooks in the `notebooks` folder. These contain information mainly related to GAME-Net usage with different datasets (BM-dataset, external literature datasets).
+
 # Authors
 
-Eng. Santiago Morandi, doctoral researcher, López group (ICIQ, Spain)  
-Dr. Sergio Pablo-García, postdoctoral researcher, The Matter Lab, A. Aspuru-Guzik group (UoT, Canada)
+Santiago Morandi, doctoral researcher, N. López group (Institut Català d'Investigació Química, Spain)  
+Sergio Pablo-García, postdoctoral researcher, The Matter Lab, A. Aspuru-Guzik group (University of Toronto, Canada)
+
 # Contributors
 
-Zarko Ivkovic, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
+Žarko Ivković, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
 
 # License
 

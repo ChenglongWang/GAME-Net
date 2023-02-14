@@ -124,8 +124,8 @@ class FlexibleNet(torch.nn.Module):
         """Flexible Net for Hyperparamater optimization
 
         Args:
-            dim (int, optional): Layer depth. Defaults to 128.
-            N_linear (int, optional): Number of fully connected layers. Default to 3.
+            dim (int, optional): Layer width. Defaults to 128.
+            N_linear (int, optional): Number of dense. Default to 3.
             N_conv (int, optional): Number of convolutional layers. Default to 3.
             adj_conv (bool, optional): Whether include linear layer between each convolution. Default to True.
             in_features (int, optional): Input graph node dimensionality. Default to NODE_FEATURES.
