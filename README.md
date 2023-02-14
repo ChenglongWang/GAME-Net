@@ -34,6 +34,12 @@ Prerequisites for installing the Python repo are [git](https://git-scm.com/) and
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp and ray in the list.
 
+4. (NEW!) To use GAME-Net locally as a web application, install Django and pydot:
+
+    `conda install -c conda-forge pydot`
+    `conda install -c anaconda django`
+    `pip install django-cors-headers`
+
 Done! Now everything is set up to start playing with the GNN framework!
 
 ## Usage
@@ -46,13 +52,18 @@ You have two possible modes:
 
 ### Inference mode
 
-Within this mode, you can opt between two different options:
+Within this mode, you can opt between three different options:
 
 1. You already performed some DFT calculations with [VASP](https://www.vasp.at/) and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
 2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the `Media` directory. 
 
     `python interactive_graph_creator.py`
+
+3. NEW! Now you can try GAME-Net as a web application! To run, type the following script from the repo root:
+
+    `python web/manage.py runserver --insecure`
+
 ### Training mode
 
 The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `data/FG_dataset` folder.
