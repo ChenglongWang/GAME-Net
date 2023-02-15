@@ -1,0 +1,21 @@
+trainer: energy
+
+dataset:
+  train:
+    src: fg_benchmark/dataset/lmdb_cross_cofe/0/train.lmdb
+    target_mean: -320.21944545274823
+    target_std: 149.8213220972733
+  val:
+    src: fg_benchmark/dataset/lmdb_cross_cofe/0/val.lmdb
+  test:
+    src: fg_benchmark/dataset/lmdb_cross_cofe/0/test.lmdb
+
+logger: tensorboard
+
+task:
+  dataset: single_point_lmdb
+  description: "Relaxed state energy prediction from initial structure."
+  type: regression
+  metric: mae
+  labels:
+    - relaxed energy
