@@ -9,12 +9,13 @@
 This is the repository of the framework related to the work "Fast Evaluation of the Adsorption Energy of Organic Molecules on Metals via Graph Neural Networks", preprint [here](https://chemrxiv.org/engage/chemrxiv/article-details/633dbc93fee74e8fdd56e15f), where we introduce GAME-Net (*Graph-based Adsorption on Metal Energy-neural Network*), a graph neural network developed for the fast prediction of the DFT ground state energy of the following systems:
 
 - Closed-shell molecules containing C, H, O, N and S.
-- Same mentioned molecules adsorbed on the following 14 transition metals: Ag, Au, Cd, Co, Cu, Fe, Ir, Ni, Os, Pd, Pt, Rh, Ru, Zn.
+- Mentioned molecules adsorbed on 14 transition metals: Ag, Au, Cd, Co, Cu, Fe, Ir, Ni, Os, Pd, Pt, Rh, Ru, and Zn.
 
-The framework is built with [PyTorch](https://pytorch.org/) and [PyTorch Geometric](https://www.pyg.org/).
+The framework and related model have been built with [PyTorch](https://pytorch.org/), [PyTorch Geometric](https://www.pyg.org/) and [Ray Tune](https://docs.ray.io/en/latest/tune/index.html).
+
 ## Installation (Linux systems)
 
-Prerequisites for installing the Python repo are [git](https://git-scm.com/) and [conda](https://docs.conda.io/en/latest/).
+Prerequisites for installing the Python code repository are [git](https://git-scm.com/) and [conda](https://docs.conda.io/en/latest/).
 
 1. Clone the repo from GitLab. Open a terminal and type the following command:  
 
@@ -28,7 +29,7 @@ Prerequisites for installing the Python repo are [git](https://git-scm.com/) and
     
     Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal prompt).  
 
-3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for hyperparameter optimization. Since they are not available in the conda-forge channel, use pip to install them:  
+3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for performing hyperparameter optimization studies. Since they are not available in the conda channels, use pip to install them:  
   
     `pip install pyrdtp ray`
 
@@ -60,14 +61,14 @@ Within this mode, you can opt between three different options:
 
     `python interactive_graph_creator.py`
 
-3. NEW! Now you can try GAME-Net as a web application! To run, type the following script from the repo root:
+3. You can use GAME-Net as a web application. To run, type the following script from the repo root:
 
     `python web/manage.py runserver --insecure`
 
 ### Training mode
 
-The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for the GNN are in the `data/FG_dataset` folder.
-Within this mode, you can choose among two available ways to use the GNN:
+The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for GAME-Net are in the `data/FG_dataset` folder.
+Within this mode, you can choose among three available ways to use the GNN:
 
 1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file (you will find some input templates in the `scripts` folder). Once created, type: 
 
@@ -88,16 +89,17 @@ To reproduce some of the results presented in the article, we provide some Jupyt
 
 # Authors
 
-Santiago Morandi, doctoral researcher, N. López group (Institut Català d'Investigació Química, Spain)  
-Sergio Pablo-García, postdoctoral researcher, The Matter Lab, A. Aspuru-Guzik group (University of Toronto, Canada)
+Santiago Morandi, doctoral researcher, Núria López group (Institut Català d'Investigació Química, Spain)  
+Sergio Pablo-García, postdoctoral researcher, The Matter Lab, Alán Aspuru-Guzik group (University of Toronto, Canada)
 
 # Contributors
 
-Žarko Ivković, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset (still not public) and interface testing.
+Žarko Ivković, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset and interface testing.
 
 # License
 
 [MIT License](https://gitlab.com/iciq-tcc/nlopez-group/gnn_eads/-/blob/master/LICENSE)
+
 # Support 
 
 In case you need help or are interested in contributing, feel free to contact us sending an e-mail to smorandi@iciq.es

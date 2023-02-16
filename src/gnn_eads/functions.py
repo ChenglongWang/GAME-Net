@@ -14,7 +14,6 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch
-from torch.distributions import Normal
 import numpy as np
 from scipy.spatial import Voronoi
 from pymatgen.io.vasp import Outcar
@@ -99,21 +98,20 @@ def ensemble_to_graph(molecule: Molecule,
         NetworkX graph object of the input molecule.
     """
     elem_lst = tuple([atom.element for atom in molecule.atoms])
-    connections_1 = []
-    connections_2 = []
+    edge_tails, edge_heads = [], []
     molecule.atom_index()
     for atom in molecule.atoms:
         for neighbour in atom.connections:
             if (atom.element == neighbour.element and atom.element in METALS) and second_order == False:
                 continue  # Neglect metal-metal connections
-            connections_1.append(atom.index)
-            connections_2.append(neighbour.index)
+            edge_tails.append(atom.index)
+            edge_heads.append(neighbour.index)
     mol_graph = nx.Graph()
     for index, elem in enumerate(elem_lst):
         mol_graph.add_node(index, element=elem)
-    for connection in zip(connections_1, connections_2):
+    for connection in zip(edge_tails, edge_heads):
         mol_graph.add_edge(*connection)
-    return mol_graph, (elem_lst, (tuple(connections_1), tuple(connections_2)))
+    return mol_graph, (elem_lst, (tuple(edge_tails), tuple(edge_heads)))
 
 
 def get_energy(dataset: str, paths_dict:dict) -> dict:
@@ -232,8 +230,7 @@ def geometry_to_graph_analysis(dataset:str, paths_dict:dict):
         print("------------------------------------------")
         return 0, [], dataset_size
     
-    lines = []
-    labels = []
+    lines, labels = [], []
     for i in range(dataset_size):
         lines.append(all_lines[1 + 5*i])  # Read the second line of each graph (ex. "C H C H Ag")
         labels.append(all_lines[5*i])     # Read label of each sample (ex. "ag-4a01-a")
@@ -347,16 +344,14 @@ def create_loaders(datasets:tuple,
     """
     Create dataloaders for training, validation and test.
     Args:
-        datasets (tuple): tuple containing the HetGraphDataset objects.
+        datasets (tuple): tuple containing the HetGraphDataset susbsets.
         split (int): number of splits to generate train/val/test sets.
         batch_size (int): batch size. Default to 32.
         test (bool): Whether to generate train/val/test loaders or just train/val.    
     Returns:
         (tuple): tuple with dataloaders for training, validation and test.
     """
-    train_loader = []
-    val_loader = []
-    test_loader = []
+    train_loader, val_loader, test_loader = [], [], []
     for dataset in datasets:
         n_items = len(dataset)
         sep = n_items // split
@@ -393,8 +388,7 @@ def scale_target(train_loader: DataLoader,
                  verbose: bool=True,
                  test: bool=True):
     """
-    Apply target scaling to the whole dataset using labels of
-    training and validation sets.
+    Apply target scaling to the whole dataset using training and validation sets.
     Args:
         train_loader (torch_geometric.loader.DataLoader): training dataloader 
         val_loader (torch_geometric.loader.DataLoader): validation dataloader
@@ -537,8 +531,8 @@ def train_loop(model,
     """
     Helper function for model training over an epoch. 
     For each batch in the epoch, the following actions are performed:
-    1) Move the batch to the selected device for training
-    2) Forward pass through the GNN model and loss function computation
+    1) Move the batch to the training device
+    2) Forward pass through the GNN model and compute loss
     3) Compute gradient of loss function wrt model parameters
     4) Update model parameters
     Args:
@@ -551,8 +545,7 @@ def train_loop(model,
         loss_all, mae_all (tuple[float]): Loss function and MAE of the whole epoch.   
     """
     model.train()  
-    loss_all = 0
-    mae_all = 0
+    loss_all, mae_all = 0, 0
     for batch in train_loader:
         batch = batch.to(device)
         optimizer.zero_grad()                     # Set gradients of all tensors to zero
@@ -575,10 +568,10 @@ def test_loop(model,
               scaled_graph_label: bool= True, 
               verbose: int=0) -> float:
     """
-    Helper function for validation/testing loop.
+    Helper function for validation/testing iteration.
     For each batch in the validation/test epoch, the following actions are performed:
     1) Set the GNN model in evaluation mode
-    2) Move the batch to the selected device where the model is stored
+    2) Move the batch to the training device
     3) Compute the Mean Absolute Error (MAE)
     Args:
         model (): GNN model object.
@@ -597,10 +590,9 @@ def test_loop(model,
         batch = batch.to(device)
         if scaled_graph_label == False:  # label in eV
             error += (model(batch) * std + mean - batch.y).abs().sum().item()
-        else:  #  Scaled label
+        else:  #  Scaled label (unitless)
             error += (model(batch) * std - batch.y * std).abs().sum().item()  
-    error /= len(loader.dataset)  # Mean Absolute Error
-    
+    error /= len(loader.dataset)      
     if verbose == 1:
         print("Dataset size = {}".format(len(loader.dataset)))
         print("Mean Absolute Error = {} eV".format(error))
@@ -656,7 +648,7 @@ def contcar_to_graph(contcar_file: str,
                      scaling_factor: dict,
                      second_order: bool, 
                      one_hot_encoder=ENCODER) -> Data:
-    """Create graph representation of chemical structure from VASP CONTCAR/POSCAR.
+    """Create graph representation of chemical structure from VASP geometry files (CONTCAR/POSCAR).
 
     Args:
         contcar_file (str): Path to CONTCAR/POSCAR file.
@@ -692,7 +684,7 @@ def get_graph_sample(system: str,
                      surf_multiplier: int=None, 
                      from_poscar: bool=False) -> Data:
     """ 
-    Generate labelled graph samples from VASP simulations.
+    Generate labelled graph samples from VASP calculations.
     
     Args: 
         system (str): path to the VASP folder containing the adsorption system
@@ -732,7 +724,7 @@ def get_graph_sample(system: str,
 def get_id(graph_params: dict) -> str:
     """
     Returns string identifier associated to a specific graph representation setting, 
-    consisting of tolerance, scaling factor, 2-hop metals inclusion used to convert
+    consisting of voronoi tolerance, metals' scaling factor, and 2-hop metals inclusion used to convert
     a chemical structure to a graph.
     Args:
         graph_params (dict): dictionary containing graph settings:
@@ -764,7 +756,7 @@ def surf(metal:str) -> str:
         return "0001"  
     
 class EarlyStopper:
-    """Early stopper for training loop.
+    """Early stopper for training loop (unused)
     """
     def __init__(self, patience: int, min_delta: float):
         self.patience = patience
@@ -785,7 +777,7 @@ class EarlyStopper:
 
 def split_list(a: list, n: int):
     """
-    Split a list into n chunks.
+    Split a list into n chunks (for nested cross-validation)
     Args:
         a(list): list to split
         n(int): number of chunks
@@ -822,5 +814,4 @@ def create_loaders_nested_cv(datasets: tuple, split: int, batch_size: int):
             val_loader = DataLoader(proxy2.pop(index2), batch_size=batch_size, shuffle=False)
             flatten_training = [item for sublist in proxy2 for item in sublist]  # flatten list of lists
             train_loader = DataLoader(flatten_training, batch_size=batch_size, shuffle=True)
-            yield deepcopy((train_loader, val_loader, test_loader))
-          
+            yield deepcopy((train_loader, val_loader, test_loader))          

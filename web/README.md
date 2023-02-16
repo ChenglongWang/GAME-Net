@@ -3,7 +3,7 @@
 To run the model locally using a web interface add the following dependencies to the current project conda environment:
 
 ```shell
-    $ pip install django django django-cors-headers pydot   
+    $ pip install django django-cors-headers pydot   
 ```
 
 Then start it with the following command run on the base project path:
