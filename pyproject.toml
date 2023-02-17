@@ -15,7 +15,7 @@ catalytic surfaces.
 """
 readme = "README.md"
 requires-python = ">=3.8"
-keywords = ["GNN", "NN", "torch", "chemistry"]
+keywords = ["GNN", "NN", "torch", "chemistry", "heterogeneous catalysis", "DFT"]
 license = {text = "MIT License"}
 classifiers = [
     "Framework :: Pytorch",

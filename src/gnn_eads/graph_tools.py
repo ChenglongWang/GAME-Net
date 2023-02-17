@@ -37,7 +37,7 @@ def convert_gpytorch_to_networkx(graph: Data) -> networkx.Graph:
     return nx_graph
 
 
-def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
+def convert_networkx_to_gpytorch(graph_nx: networkx.Graph) -> Data:
     """
     Convert graph object from networkx to pytorch_geometric type.
     Args:
@@ -45,7 +45,20 @@ def convert_networkx_to_gpytorch(graph: networkx.Graph) -> Data:
     Returns:
         new_g(torch_geometric.data.Data): torch_geometric graph object        
     """
-    return None
+    n_nodes = graph_nx.number_of_nodes()
+    n_edges = graph_nx.number_of_edges()
+    node_features = torch.zeros((n_nodes, len(ENCODER)))
+    edge_features = torch.zeros((n_edges, 1))
+    edge_index = torch.zeros((2, n_edges), dtype=torch.long)
+    node_index = torch.zeros((n_nodes), dtype=torch.long)
+    for i, node in enumerate(graph_nx.nodes):
+        node_index[i] = node
+        node_features[i, ENCODER[graph_nx.nodes[node]['atom']]] = 1
+    for i, edge in enumerate(graph_nx.edges):
+        edge_index[0, i] = edge[0]
+        edge_index[1, i] = edge[1]
+    graph_pyg = Data(x=node_features, edge_index=edge_index, edge_attr=edge_features, y=node_index)
+    return graph_pyg
 
 
 def plotter(graph: Data,
@@ -57,7 +70,7 @@ def plotter(graph: Data,
             width: float=1.2,
             k: float=0.01,
             scale: float=1,
-            dpi: int=600,
+            dpi: int=300,
             figsize: tuple[int, int]=(4,4)):
     """
     Visualize graph with atom labels and colors. 
