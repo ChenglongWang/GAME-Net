@@ -94,6 +94,12 @@ file, while the FG-dataset ones contain 20 predictions files numbered from 0 to
 and [`bm_predictions_analysis.ipynb`](./bm_predictions_analysis.ipynb) contains
 the code to analyze the results obtained for the FG and BM datasets respectively.
 
+## ./config_templates
+Configuration folder contains the configuration templates used during the OCP
+runs. Note that these files are publicly available in the OCP [Github
+repository](https://github.com/Open-Catalyst-Project/ocp) and are only included
+in this repository for completeness.
+
 ## Convert to ensemble
 Datasets inside the [`datasets`](./datasets) folder can be converted to ensemble
 using the code provided in the [`to_ensemble.ipynb`](./to_ensemble.ipynb) Python
