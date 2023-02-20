@@ -97,8 +97,8 @@ the code to analyze the results obtained for the FG and BM datasets respectively
 ## ./config_templates
 Configuration folder contains the configuration templates used during the OCP
 runs. Note that these files are publicly available in the OCP [Github
-repository](https://github.com/Open-Catalyst-Project/ocp) and are only included
-in this repository for completeness.
+repository](https://github.com/Open-Catalyst-Project/ocp/tree/main/configs) and
+are only included in this repository for completeness.
 
 ## Convert to ensemble
 Datasets inside the [`datasets`](./datasets) folder can be converted to ensemble
