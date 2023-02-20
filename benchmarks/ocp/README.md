@@ -50,11 +50,11 @@ for adsorbed molecules: gasses molecules are label as `{name}.(contcar|poscar)`
 and surfaces are label as `{metal}-0000.(contcar|poscar)`.
 [`lmdb_creation_gamenet.ipynb`](./lmdb_creation_gamenet.ipynb) contains the code
 to convert the datasets to the OCP-compatible
-[`lmdb`](https://git.openldap.org/openldap/openldap/) format.  If executed, the
-notebook will extract the contents of the compressed files, allowing to explore
-the raw contents of the databases. Moreover, the notebook contains the procedure
-to perform the nested cross validation with an stratified splitting of the
-samples.
+[`lmdb`](https://git.openldap.org/openldap/openldap/) format and describes the
+format chosen for the files in the datasets. If executed, the notebook will
+extract the contents of the compressed files, allowing to explore the raw
+contents of the databases. Moreover, the notebook contains the procedure to
+perform the nested cross validation with an stratified splitting of the samples.
 
 These datasets only contain the [`POSCAR`](https://www.vasp.at/wiki/index.php/POSCAR) and [`CONTCAR`](https://www.vasp.at/wiki/index.php/CONTCAR) structures (*ansatz* and
 relaxed respectively) of each Density Functional Theory (DFT) calculation, the
