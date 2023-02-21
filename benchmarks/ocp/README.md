@@ -15,7 +15,8 @@ repository](https://github.com/Open-Catalyst-Project/ocp).
 If your machine has a working install of
 [`nix`](https://nixos.org/download.html#nix-install-linux), you can create a
 nix-shell that automatically provides the needed dependencies by using the
-[`shell.nix`](./shell.nix) file found in this folder through the [`nix-shell`](https://nixos.org/manual/nix/stable/command-ref/nix-shell.html)
+[`shell.nix`](./shell.nix) file found in this folder through the
+[`nix-shell`](https://nixos.org/manual/nix/stable/command-ref/nix-shell.html)
 command:
 
 ``` sh
@@ -56,7 +57,9 @@ extract the contents of the compressed files, allowing to explore the raw
 contents of the databases. Moreover, the notebook contains the procedure to
 perform the nested cross validation with an stratified splitting of the samples.
 
-These datasets only contain the [`POSCAR`](https://www.vasp.at/wiki/index.php/POSCAR) and [`CONTCAR`](https://www.vasp.at/wiki/index.php/CONTCAR) structures (*ansatz* and
+These datasets only contain the
+[`POSCAR`](https://www.vasp.at/wiki/index.php/POSCAR) and
+[`CONTCAR`](https://www.vasp.at/wiki/index.php/CONTCAR) structures (*ansatz* and
 relaxed respectively) of each Density Functional Theory (DFT) calculation, the
 initial (1 converged SCF cycle) and the relaxed DFT energies, and the chemical
 family of each sample. 
