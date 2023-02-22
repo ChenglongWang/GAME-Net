@@ -1,5 +1,4 @@
-"""This module contains functions used for the whole workflow of the project, from
-data preparation to model training and evaluation."""
+"""Functions for converting DFT data to graphs and for learning process purposes."""
 
 from itertools import product
 import math
@@ -8,15 +7,16 @@ from subprocess import Popen, PIPE
 from copy import copy, deepcopy
 
 from sklearn.preprocessing import OneHotEncoder
+from pyRDTP.geomio import file_to_mol
+from pyRDTP.molecule import Molecule
+import networkx as nx
 from torch_geometric.loader import DataLoader
 from torch_geometric.data import Data
 import torch.nn.functional as F
 import torch
 import numpy as np
 from scipy.spatial import Voronoi
-from ase.io.vasp import read_vasp
-from ase import Atoms
-from networkx import Graph, set_node_attributes
+from pymatgen.io.vasp import Outcar
  
 from gnn_eads.constants import CORDERO, METALS, MOL_ELEM, FG_RAW_GROUPS, ENCODER, ELEMENT_LIST
 
@@ -38,128 +38,80 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
         return int((1 - 1/splits) * 100), math.ceil(100 / splits)
 
 
-def get_voronoi_neighbourlist(atoms: Atoms, 
-                              tolerance: float, 
-                              scaling_factor: float) -> np.ndarray:
-    """Get connectivity list from Voronoi analysis, considering periodic boundary conditions.
-    To have two atoms connected, these must satisfy two conditions:
-    1. They must share a Voronoi facet
-    2. The distance between them must be less than the sum of their covalent radii (plus a tolerance)
-
+def mol_to_ensemble(molecule: Molecule,
+                    voronoi_tolerance: float,
+                    scaling_factor: float, 
+                    second_order: bool) -> Molecule:
+    """
+    Extract adsorbate + interacting metal atoms from the adsorption cell.
     Args:
-        atoms (Atoms): ase Atoms object.
-        tolerance (float): Tolerance for second condition.
-        scaling_factor (float): Scaling factor for covalent radii of metal atoms.
-
+        molecule(pyRDTP.molecule.Molecule): molecule object.
+        voronoi_tolerance(float): for connectivity search in pyRDTP.
+        atom_rad_dict (dict): atomic radii dictionary (e.g., "ag": 0.8)
+        second_order (bool): whether including metal 2nd order neighbours. Default to False
     Returns:
-        np.ndarray: N_edges x 2 array with the connectivity list. 
-
-    Notes:
-        The array contains all the edges just in one direction! 
+        new_molecule(pyRDTP.molecule.Molecule): adsorbate + interacting metal atoms ensemble.
     """
-    # First condition to have two atoms connected: They must share a Voronoi facet
-    coords_arr = np.copy(atoms.get_scaled_positions())  
-    coords_arr = np.expand_dims(coords_arr, axis=0)
-    coords_arr = np.repeat(coords_arr, 27, axis=0)
-    mirrors = [-1, 0, 1]
-    mirrors = np.asarray(list(product(mirrors, repeat=3)))
-    mirrors = np.expand_dims(mirrors, 1)
-    mirrors = np.repeat(mirrors, coords_arr.shape[1], axis=1)
-    corrected_coords = np.reshape(
-        coords_arr + mirrors,
-        (coords_arr.shape[0] * coords_arr.shape[1], coords_arr.shape[2]),
-    )
-    corrected_coords = np.dot(corrected_coords, atoms.get_cell())
-    translator = np.tile(np.arange(coords_arr.shape[1]), coords_arr.shape[0])
-    vor_bonds = Voronoi(corrected_coords)
-    pairs_corr = translator[vor_bonds.ridge_points]
-    pairs_corr = np.unique(np.sort(pairs_corr, axis=1), axis=0)
-    true_arr = pairs_corr[:, 0] == pairs_corr[:, 1]
-    true_arr = np.argwhere(true_arr)
-    pairs_corr = np.delete(pairs_corr, true_arr, axis=0)
-    # Second condition for two atoms to be connected: Their distance must be smaller than the sum of their
-    # covalent radii plus a tolerance.
-    dst_d = {}
-    pairs_lst = []
-    for pair in pairs_corr:
-        distance = atoms.get_distance(pair[0], pair[1], mic=True)  # mic=True for periodic boundary conditions
-        elem_pair = (atoms[pair[0]].symbol, atoms[pair[1]].symbol)
-        fr_elements = frozenset(elem_pair)
-        if elem_pair not in dst_d:
-            dst_d[fr_elements] = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance
-            if atoms[pair[0]].symbol in METALS: 
-                dst_d[fr_elements] += (scaling_factor - 1.0) * CORDERO[atoms[pair[0]].symbol]
-            if atoms[pair[1]].symbol in METALS: 
-                dst_d[fr_elements] += (scaling_factor - 1.0) * CORDERO[atoms[pair[1]].symbol]
-        if distance <= dst_d[fr_elements]:
-            pairs_lst.append(pair)
-    if len(pairs_lst) == 0:
-        return np.array([])
-    else:
-        return np.sort(np.array(pairs_lst), axis=1)
-
-
-def atoms_to_graph(atoms: Atoms, 
-                   voronoi_tolerance: float,
-                   scaling_factor: float,
-                   second_order: bool) -> Graph:
-    """
-    Convert ase Atoms object to NetworkX graph, representing the adsorbate-metal system.
-
-    Args: 
-        atoms (ase.Atoms): ase Atoms object.
-        voronoi_tolerance (float): Tolerance of the tessellation algorithm for edge creation.
-        second_order (bool): Whether to include the 2-hop metal atoms neighbours.
-        scaling_factor (float): Scaling factor applied to metal atomic radii from Cordero et al.
-    Returns:
-        nx_graph (nx.Graph): NetworkX graph object representing the adsorbate-metal system.
-    """
-    # 1) Get connectivity list for the whole system (adsorbate + metal slab)
-    adsorbate_indexes = {atom.index for atom in atoms if atom.symbol not in METALS}
-    metal_neighbours = set()
-    neighbour_list = get_voronoi_neighbourlist(atoms, voronoi_tolerance, scaling_factor)
-    if len(neighbour_list) == 0:
-        return Atoms()
-    # 2) Get metal neighbours
-    for pair in neighbour_list:  # first order neighbours
-        if (pair[0] in adsorbate_indexes) and (atoms[pair[1]].symbol in METALS):  # adsorbate-metal
-            metal_neighbours.add(pair[1])
-        elif (pair[1] in adsorbate_indexes) and (atoms[pair[0]].symbol in METALS):  # metal-adsorbate
-            metal_neighbours.add(pair[0])
-        else:  # adsorbate-adsorbate and metal-metal
-            continue
-    if second_order:  # second order neighbours
-        nl = []
-        for metal_atom_index in metal_neighbours:
-            # append to nl the index of neighbours of the metal atom
-            for pair in neighbour_list:
-                if (pair[0] == metal_atom_index) and (atoms[pair[1]].symbol in METALS):
-                    nl.append(pair[1])
-                elif (pair[1] == metal_atom_index) and (atoms[pair[0]].symbol in METALS):
-                    nl.append(pair[0])
-                else:
-                    continue
-
-        for index in nl:
-            metal_neighbours.add(index)        
-    # 3) Construct graph with the atoms in the ensemble
-    ensemble =  Atoms(atoms[[*adsorbate_indexes, *metal_neighbours]], pbc=atoms.pbc, cell=atoms.cell)
-    nx_graph = Graph()
-    nx_graph.add_nodes_from(range(len(ensemble)))
-    set_node_attributes(nx_graph, {i: ensemble[i].symbol for i in range(len(ensemble))}, "element")
-    ensemble_neighbour_list = get_voronoi_neighbourlist(ensemble, voronoi_tolerance, scaling_factor)
-    ensemble_neighbour_list = np.concatenate((ensemble_neighbour_list, ensemble_neighbour_list[:, [1, 0]]))
-    if not second_order:  # If not second order, remove connections between metal atoms
-        ll = []
-        for pair in ensemble_neighbour_list:
-            if (ensemble[pair[0]].symbol in METALS) and (ensemble[pair[1]].symbol in METALS):
-                continue
+    elem_rad = {}
+    for metal in METALS:
+        elem_rad[metal] = CORDERO[metal] * scaling_factor
+    for element in MOL_ELEM:
+        elem_rad[element] = CORDERO[element]
+    # 1) Define whole connectivity in the cell
+    molecule = connectivity_search_voronoi(molecule, voronoi_tolerance, elem_rad)
+    # 2) Create Molecule object with adsorbate and interacting metal atoms
+    new_atoms = []
+    non_metal_atoms = [atom for atom in molecule.atoms if atom.element not in METALS]
+    # 3) Collect atoms
+    for atom in non_metal_atoms:
+        for neighbour in atom.connections + [atom]:
+            if neighbour not in new_atoms:
+                new_atoms.append(neighbour)
+    # 3b) Collect metal neighbours of the metal atoms directly in contact with adsorbate
+    if second_order: 
+        for atom in new_atoms:
+            if atom in METALS:
+                for neighbour in atom.connections + [atom]:
+                    if neighbour not in new_atoms:
+                        new_atoms.append(neighbour)
             else:
-                ll.append(pair)
-        nx_graph.add_edges_from(ll)
-    else:
-        nx_graph.add_edges_from(ensemble_neighbour_list)
-    return nx_graph
+                pass
+    new_atoms = [atom.copy() for atom in new_atoms]
+    new_molecule = Molecule("")
+    new_molecule.atom_add_list(new_atoms)
+    new_molecule.connection_clear()
+    new_molecule.cell_p_add(molecule.cell_p.copy())
+    # 4) Define connectivity of the final ensemble
+    new_molecule = connectivity_search_voronoi(new_molecule, voronoi_tolerance, elem_rad)
+    return new_molecule
+
+
+def ensemble_to_graph(molecule: Molecule, 
+                      second_order: bool) -> nx.Graph:
+    """
+    Convert pyRDTP Molecule to NetworkX graph.
+    If second order neighbours are included, the metal-metal connnectons are kept.
+    If only nearest metal atoms included, no metal-metal edges are present in the graph.
+    Args:
+        molecule(pyRDTP.molecule.Molecule): molecule object.
+    Returns:
+        NetworkX graph object of the input molecule.
+    """
+    elem_lst = tuple([atom.element for atom in molecule.atoms])
+    edge_tails, edge_heads = [], []
+    molecule.atom_index()
+    for atom in molecule.atoms:
+        for neighbour in atom.connections:
+            if (atom.element == neighbour.element and atom.element in METALS) and second_order == False:
+                continue  # Neglect metal-metal connections
+            edge_tails.append(atom.index)
+            edge_heads.append(neighbour.index)
+    graph = nx.Graph()
+    for index, elem in enumerate(elem_lst):
+        graph.add_node(index, element=elem)
+    for connection in zip(edge_tails, edge_heads):
+        graph.add_edge(*connection)
+    return graph
 
 
 def get_energy(dataset: str, paths_dict:dict) -> dict:
@@ -189,10 +141,10 @@ def get_structures(dataset: str, paths_dict: dict) -> dict:
     Returns:
         mol_dict(dict): Dictionary with pyRDTP.Molecule objects for each sample.  
     """
-    atoms_dict = {}
+    mol_dict = {}
     for contcar in paths_dict[dataset]['geom'].glob('./*.contcar'):
-        atoms_dict[contcar.stem] = read_vasp(contcar)
-    return atoms_dict
+        mol_dict[contcar.stem] = file_to_mol(contcar, 'contcar', bulk=False)  # pyRDTP
+    return mol_dict
 
 
 def get_tuples(dataset: str,
@@ -227,13 +179,15 @@ def get_tuples(dataset: str,
                 print(f'{key} not found')
                 continue
             try:
-                graph = atoms_to_graph(mol, voronoi_tolerance, scaling_factor, second_order)
+                mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order)
+                graph = ensemble_to_graph(mol, second_order)
             except ValueError:
                 print(f'{key} not converting to graph')
                 continue
         else:  # Gas molecules
             energy = ener_dict[key]
-            graph = atoms_to_graph(mol, voronoi_tolerance, scaling_factor, second_order)
+            mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order)
+            graph = ensemble_to_graph(mol, second_order)
         ntuple_dict[key] = ntuple(code=key, graph=graph, energy=energy)
     return ntuple_dict
 
@@ -251,8 +205,8 @@ def export_tuples(filename: str,
             lst_trans = lambda x: " ".join([str(y) for y in x])
             outfile.write(f'{code}\n')
             species_list = [inter.graph.nodes[node]['element'] for node in inter.graph.nodes]
-            edge_tails = [edge[0] for edge in inter.graph.edges] + [edge[1] for edge in inter.graph.edges]
-            edge_heads = [edge[1] for edge in inter.graph.edges] + [edge[0] for edge in inter.graph.edges]
+            edge_tails = [edge[0] for edge in inter.graph.edges]
+            edge_heads = [edge[1] for edge in inter.graph.edges]
             outfile.write(f'{lst_trans(species_list)}\n')
             outfile.write(f'{lst_trans(edge_tails)}\n')
             outfile.write(f'{lst_trans(edge_heads)}\n')
@@ -507,6 +461,71 @@ def scale_target(train_loader: DataLoader,
         return train_loader, val_loader, test_loader, 0, 1
 
 
+def connectivity_search_voronoi(molecule: Molecule,
+                                tolerance:float,
+                                metal_rad_dict:dict,
+                                center:bool=False) -> Molecule:
+    """
+    Perform a connectivity search with the Voronoi tessellation algorithm. The method
+    considers periodic boundary conditions.
+    Args:
+        molecule(pyRDTP.molecule.Molecule): Input molecule for which connectivity
+            search is performed.
+        tolerance (float): Tolerance that will be added to the
+            distance between two atoms.
+        metal_rad_dict (dict): Dictionary of atomic radii of metals and elements
+            of the model.
+        center (bool, optional): If True, the direct coordinates array of
+            the molecule will be centered before the bond calculation to
+            avoid errors in far from the box molecules. The coordinates
+            of the molecule will not change.
+    Returns:
+        molecule (pyRDTP.molecule.Molecule): molecule object with defined connectivity.
+    """
+    if len(molecule.atoms) == 1:
+        return molecule
+    if center:
+        cartesian_old = np.copy(molecule.coords_array('cartesian'))
+        direct_old = np.copy(molecule.coords_array('direct'))
+        molecule.move_to_box_center()
+    coords_arr = np.copy(molecule.coords_array('direct'))
+    coords_arr = np.expand_dims(coords_arr, axis=0)
+    coords_arr = np.repeat(coords_arr, 27, axis=0)
+    mirrors = [-1, 0, 1]
+    mirrors = np.asarray(list(product(mirrors, repeat=3)))
+    mirrors = np.expand_dims(mirrors, 1)
+    mirrors = np.repeat(mirrors, coords_arr.shape[1], axis=1)
+    corrected_coords = np.reshape(coords_arr + mirrors,
+                                  (coords_arr.shape[0] * coords_arr.shape[1],
+                                   coords_arr.shape[2]))
+    corrected_coords = np.dot(corrected_coords, molecule.cell_p.direct)
+    translator = np.tile(np.arange(coords_arr.shape[1]),
+                         coords_arr.shape[0])
+    vor_bonds = Voronoi(corrected_coords)
+    pairs_corr = translator[vor_bonds.ridge_points]
+    pairs_corr = np.unique(np.sort(pairs_corr, axis=1), axis=0)
+    true_arr = pairs_corr[:, 0] == pairs_corr[:, 1]
+    true_arr = np.argwhere(true_arr)
+    pairs_corr = np.delete(pairs_corr, true_arr, axis=0)
+    dst_d = {}
+    pairs_lst = []
+    for pair in pairs_corr:
+        elements = [molecule.atoms[index].element for index in pair]
+        fr_elements = frozenset(elements)
+        if fr_elements not in dst_d:
+            dst_d[fr_elements] = metal_rad_dict[elements[0]]
+            dst_d[fr_elements] += metal_rad_dict[elements[1]]
+            dst_d[fr_elements] += tolerance
+        if dst_d[fr_elements] >= molecule.distance(*pair, system='cartesian', minimum=True):
+            pairs_lst.append(pair)
+            molecule.atoms[pair[0]].connection_add(molecule.atoms[pair[1]])
+    molecule.pairs = np.asarray(pairs_lst)
+    if center:
+        molecule.coords_update(cartesian_old, 'cartesian')
+        molecule.coords_update(direct_old, 'direct')
+    return molecule
+
+
 def train_loop(model,
                device:str,
                train_loader: DataLoader,
@@ -644,8 +663,14 @@ def contcar_to_graph(contcar_file: str,
     Returns:
         graph (torch_geometric.data.Data): Graph object representing the system under study.
     """
-    atoms = read_vasp(contcar_file)
-    nx_graph = atoms_to_graph(atoms, voronoi_tolerance, scaling_factor, second_order)
+    mol = file_to_mol(contcar_file, 'contcar', bulk=False)
+    mol = mol_to_ensemble(mol, voronoi_tolerance, scaling_factor, second_order=second_order)
+    nx_graph = ensemble_to_graph(mol, second_order=second_order)
+    # Convert CONTCAR file to Pytorch geometric graph
+    
+
+
+    
     elem = list(nx_graph[1][0])
     source = list(nx_graph[1][1][0])
     target = list(nx_graph[1][1][1])

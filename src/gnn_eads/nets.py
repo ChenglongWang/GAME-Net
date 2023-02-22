@@ -91,7 +91,7 @@ class PreTrainedModel():
                                               map_location=torch.device("cpu")))
         self.model.eval()  # Inference mode
         self.model.to("cpu")
-        # Scaling parameters
+        # Scaling parameters (only standardization for now)
         self.mean, self.std = get_mean_std_from_model(self.model_path)
         # Graph conversion parameters
         self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(self.model_path)

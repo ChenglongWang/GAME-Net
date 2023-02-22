@@ -90,6 +90,9 @@ def create_model_report(model_name: str,
         model_name = input("The name defined already exists in the provided directory: Provide a new one: ")
         os.mkdir("{}/{}".format(model_path, model_name))
     os.mkdir("{}/{}/Outliers".format(model_path, model_name))
+    # Save dataloaders for future use
+    torch.save(train_loader, "{}/{}/train_loader.pth".format(model_path, model_name))
+    torch.save(val_loader, "{}/{}/val_loader.pth".format(model_path, model_name))
     
     # Store info about GNN architecture # NOT NEEDED NOW AS THE FLEXIBLE NET ALWAYS INCUDES EVERYTHING 
     # with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
@@ -151,6 +154,7 @@ def create_model_report(model_name: str,
         file1.close()
         return "Model saved in {}/{}".format(model_path, model_name)
     
+    torch.save(test_loader, "{}/{}/test_loader.pth".format(model_path, model_name))
     test_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in test_loader.dataset]
     test_family_list = [graph.family for graph in test_loader.dataset]
     train_family_list = [graph.family for graph in train_loader.dataset]
