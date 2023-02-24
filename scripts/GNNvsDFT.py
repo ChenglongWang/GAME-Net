@@ -1,9 +1,8 @@
 """Script for the direct comparison of the GNN performance compared to DFT."""
 
 import argparse
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../src/gnn_eads')))
+import sys
+sys.path.insert(0, "../src")
 
 import matplotlib.pyplot as plt
 
@@ -24,7 +23,7 @@ if __name__ == "__main__":
     ARGS = PARSER.parse_args()
     
     # 1) Load pre-trained GNN model on CPU
-    MODEL_PATH = "../models/best_model"
+    MODEL_PATH = "../models/GAME-Net"
     model = PreTrainedModel(MODEL_PATH)
     
     # 2) Convert input DFT sample to graph object

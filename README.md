@@ -85,7 +85,7 @@ Within this mode, you can choose among three available ways to use the GNN:
 
 ## Notebooks
 
-To reproduce some of the results presented in the article, we provide some Jupyter notebooks in the `notebooks` folder. These contain information mainly related to GAME-Net usage with different datasets (BM-dataset, external literature datasets).
+To reproduce some of the results presented in the article, we provide some Jupyter notebooks in the `notebooks` folder. These contain information mainly related to GAME-Net testing with different datasets (BM-dataset, external literature datasets).
 
 # Authors
 

@@ -24,7 +24,7 @@ amsgrad = true              # Include amsgrad addition of adam
 
 [architecture]  # All the hyperparameters defining the model architecture
 
-dim = 256                  # dimension of the layers
+dim = 160                  # dimension of the layers
 sigma = "ReLU"              # Activation function
 bias = false                # Whether allowing bias in all layer formulas
 n_linear = 0                # Number of fully connected layers
@@ -41,5 +41,5 @@ pool_layer_norm = false
 
 [data]
 
-root = "/home/santiago/Desktop/GNN/FG_dataset"  #Absolute path to the FG_dataset folder
+root = "/home/smorandi/Desktop/gnn_eads/data/FG_dataset"  #Absolute path to the FG_dataset folder
 

@@ -1,24 +1,19 @@
-from django.shortcuts import render
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-
 
 import time
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src')))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../src/gnn_eads')))
 
 import numpy as np
-import matplotlib.pyplot as plt
 import torch
 from torch_geometric.data import Data
 
-from gnn_eads.constants import METALS, ENCODER, CORDERO, MOL_ELEM, CHEMSPIPY
+from gnn_eads.constants import ENCODER
 from gnn_eads.graph_tools import convert_gpytorch_to_networkx
-from gnn_eads.functions import connectivity_search_voronoi, ensemble_to_graph, surf
+from gnn_eads.functions import surf
 from gnn_eads.nets import PreTrainedModel
 
-from networkx import path_graph
 from networkx.drawing.nx_pydot import to_pydot
 
 import json

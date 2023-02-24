@@ -7,7 +7,7 @@ import argparse
 from torch_geometric.loader import DataLoader
 from torch import save
 
-from gnn_eads.functions import get_graph_sample, contcar_to_graph, get_graph_formula, get_id
+from gnn_eads.functions import get_graph_sample, structure_to_graph, get_graph_formula, get_id
 from gnn_eads.constants import ENCODER
 
 if __name__ == "__main__":
@@ -35,7 +35,7 @@ if __name__ == "__main__":
                     continue
                 if "-" not in dirname: # Gas molecules
                     print("    {}".format(dirname))
-                    graph = contcar_to_graph(dirpath+"/"+dirname+"/CONTCAR", 
+                    graph = structure_to_graph(dirpath+"/"+dirname+"/CONTCAR", 
                                              voronoi_tolerance=ARGS.tol,
                                              scaling_factor=ARGS.sf, 
                                              second_order=sec_nn)

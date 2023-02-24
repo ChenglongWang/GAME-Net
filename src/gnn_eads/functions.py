@@ -65,10 +65,9 @@ def get_voronoi_neighbourlist(atoms: Atoms,
     mirrors = np.asarray(list(product(mirrors, repeat=3)))
     mirrors = np.expand_dims(mirrors, 1)
     mirrors = np.repeat(mirrors, coords_arr.shape[1], axis=1)
-    corrected_coords = np.reshape(
-        coords_arr + mirrors,
-        (coords_arr.shape[0] * coords_arr.shape[1], coords_arr.shape[2]),
-    )
+    corrected_coords = np.reshape(coords_arr + mirrors,
+                                  (coords_arr.shape[0] * coords_arr.shape[1],
+                                   coords_arr.shape[2]))
     corrected_coords = np.dot(corrected_coords, atoms.get_cell())
     translator = np.tile(np.arange(coords_arr.shape[1]), coords_arr.shape[0])
     vor_bonds = Voronoi(corrected_coords)
@@ -417,9 +416,9 @@ def create_loaders(datasets:tuple,
     test_n = len(test_loader)
     total_n = train_n + val_n + test_n
     train_loader = DataLoader(train_loader, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_loader, batch_size=batch_size)
+    val_loader = DataLoader(val_loader, batch_size=batch_size, shuffle=False)
     if test == True:
-        test_loader = DataLoader(test_loader, batch_size=batch_size)
+        test_loader = DataLoader(test_loader, batch_size=batch_size, shuffle=False)
         a, b, c = split_percentage(split)
         print("Data split (train/val/test): {}/{}/{} %".format(a, b, c))
         print("Training data = {} Validation data = {} Test data = {} (Total = {})".format(train_n, val_n, test_n, total_n))
@@ -605,10 +604,8 @@ def get_mean_std_from_model(path:str) -> tuple[float]:
 
 def get_graph_conversion_params(path: str) -> tuple:
     """Get the hyperparameters for geometry->graph conversion algorithm.
-
     Args:
-        path (str): path to GNN model.
-
+        path (str): path to directory containing the GNN model.
     Returns:
         tuple: voronoi tolerance (float), scaling factor (float), metal nearest neighbours inclusion (bool)
     """
@@ -627,12 +624,12 @@ def get_graph_conversion_params(path: str) -> tuple:
     return voronoi_tol, scaling_factor, second_order_nn 
 
 
-def contcar_to_graph(contcar_file: str,
-                     voronoi_tolerance: float,
-                     scaling_factor: dict,
-                     second_order: bool, 
-                     one_hot_encoder=ENCODER) -> Data:
-    """Create Pytorch geometric graph of chemical structure from VASP geometry files (CONTCAR/POSCAR).
+def structure_to_graph(geometry_file: str,
+                       voronoi_tolerance: float,
+                       scaling_factor: dict,
+                       second_order: bool, 
+                       one_hot_encoder=ENCODER) -> Data:
+    """Create Pytorch Geometric graph from VASP chemical structure file (CONTCAR/POSCAR).
 
     Args:
         contcar_file (str): Path to CONTCAR/POSCAR file.
@@ -642,22 +639,22 @@ def contcar_to_graph(contcar_file: str,
         one_hot_encoder (optional): One-hot encoder. Defaults to ENCODER.
 
     Returns:
-        graph (torch_geometric.data.Data): Graph object representing the system under study.
+        graph (torch_geometric.data.Data): PyG graph representing the system under study.
     """
-    atoms = read_vasp(contcar_file)
+    atoms = read_vasp(geometry_file)
     nx_graph = atoms_to_graph(atoms, voronoi_tolerance, scaling_factor, second_order)
-    elem = list(nx_graph[1][0])
-    source = list(nx_graph[1][1][0])
-    target = list(nx_graph[1][1][1])
-    elem_array = np.array(elem).reshape(-1, 1)
+    species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
+    edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]
+    edge_heads = [edge[1] for edge in nx_graph.edges] + [edge[0] for edge in nx_graph.edges]
+    elem_array = np.array(species_list).reshape(-1, 1)
     elem_enc = one_hot_encoder.transform(elem_array).toarray()
-    edge_index = torch.tensor([source, target], dtype=torch.long)
+    edge_index = torch.tensor([edge_tails, edge_heads], dtype=torch.long)
     x = torch.tensor(elem_enc, dtype=torch.float)
     return Data(x=x, edge_index=edge_index)
 
 
-def get_graph_sample(system: str, 
-                     surface: str,
+def get_graph_sample(path: str, 
+                     surface_path: str,
                      voronoi_tolerance: float, 
                      scaling_factor: dict, 
                      second_order: bool,
@@ -667,41 +664,45 @@ def get_graph_sample(system: str,
                      surf_multiplier: int=None, 
                      from_poscar: bool=False) -> Data:
     """ 
-    Generate labelled graph samples from VASP calculations.
-    
+    Create labelled Pytroch Geometric graph from VASP calculation.
     Args: 
-        system (str): path to the VASP folder of the calculation. OUTCAR and CONTCAR/POSCAR files are required.
-        surface (str): path to the VASP folder of the metal slab calculation. OUTCAR is required.
+        path (str): path to the VASP directory of the calculation. OUTCAR and CONTCAR/POSCAR files are required.
+        surface_path (str): path to the VASP calculation of the empty metal slab. OUTCAR is required.
         voronoi_tolerance (float): tolerance applied during the conversion to graph
         scaling_factor (float): scaling parameter for the atomic radii of metals
         second_order (bool): Inclusion of 2-hop metal neighbours
-        encoder (OneHotEncoder): one-hot encoder used to represent atomic elements    
+        encoder (OneHotEncoder): one-hot encoder used to represent atomic elements   
+        gas_mol (bool): Whether the system is a gas molecule
+        family (str): Family the system belongs to (e.g. "aromatics")
+        surf_multiplier (int): Number of times the surface provided is repeated in the supercell (e.g. 2 for 2x2 surface)
+        from_poscar (bool): Whether to read the geometry from the POSCAR file (True) or the CONTCAR file (False)
     Returns: 
-        graph (Data): Labelled graph sample
+        pyg_graph (Data): Labelled graph in Pytorch Geometric format
     """
-    
+    # Select from which file to read the geometry
     vasp_geometry_file = "POSCAR" if from_poscar else "CONTCAR"
-    graph = contcar_to_graph("{}/{}".format(system, vasp_geometry_file),
+    # Convert the structure to a graph
+    pyg_graph = structure_to_graph("{}/{}".format(path, vasp_geometry_file),
                              voronoi_tolerance=voronoi_tolerance, 
                              scaling_factor=scaling_factor,
                              second_order=second_order, 
-                             one_hot_encoder=encoder) # Graph structure
-    p1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(system)], stdout=PIPE)
+                             one_hot_encoder=encoder)
+    # Label the graph with the energy of the system 
+    p1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(path)], stdout=PIPE)
     p2 = Popen(["tail", "-1"], stdin=p1.stdout, stdout=PIPE)
     p3 = Popen(["awk", "{print $NF}"], stdin=p2.stdout, stdout=PIPE)
-    graph.y = float(p3.communicate()[0].decode("utf-8"))
+    pyg_graph.y = float(p3.communicate()[0].decode("utf-8"))
     if gas_mol == False:
-        ps1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(surface)], stdout=PIPE)
+        ps1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(surface_path)], stdout=PIPE)
         ps2 = Popen(["tail", "-1"], stdin=ps1.stdout, stdout=PIPE)
         ps3 = Popen(["awk", "{print $NF}"], stdin=ps2.stdout, stdout=PIPE)
         surf_energy = float(ps3.communicate()[0].decode("utf-8"))
         if surf_multiplier is not None:
             surf_energy *= surf_multiplier
-        graph.y -= surf_energy  
-    graph.formula = get_graph_formula(graph, encoder.categories_[0])
-    if family is not None:
-        graph.family = family
-    return graph
+        pyg_graph.y -= surf_energy  
+    pyg_graph.formula = get_graph_formula(pyg_graph, encoder.categories_[0])
+    pyg_graph.family = family if family is not None else "None"
+    return pyg_graph
 
 
 def get_id(graph_params: dict) -> str:
@@ -725,21 +726,27 @@ def get_id(graph_params: dict) -> str:
 
 
 def surf(metal:str) -> str:
-    """Returns metal facet considered as function of metal present in the FG-dataset.
+    """
+    Returns metal facet considered as function of metal present in the FG-dataset.
     Args:
         metal (str): Metal symbol
 
     Returns:
         str: metal facet
     """
-    
     if metal in ["Ag", "Au", "Cu", "Ir", "Ni", "Pd", "Pt", "Rh"]:
         return "111"
+    elif metal == "Fe":
+        return "100"
     else:
         return "0001"  
     
 class EarlyStopper:
-    """Early stopper for training loop (unused)
+    """
+    Early stopper for training loop (unused).
+    Args:
+        patience (int): number of epochs to wait before turning on the early stopper
+        min_delta (float): minimum change in validation loss to be considered an improvement
     """
     def __init__(self, patience: int, min_delta: float):
         self.patience = patience
@@ -748,6 +755,13 @@ class EarlyStopper:
         self.min_validation_loss = np.inf
         
     def early_stop(self, validation_loss: float) -> bool:
+        """
+        Check whether to stop training.
+        Args:
+            validation_loss (float): validation loss
+        Returns:
+            bool: True if training should be stopped, False otherwise
+        """
         if validation_loss < self.min_validation_loss:
             self.min_validation_loss = validation_loss
             self.counter = 0

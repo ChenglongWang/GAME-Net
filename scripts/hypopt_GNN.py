@@ -87,7 +87,6 @@ ARGS = PARSER.parse_args()
 
 def get_hyp_space(config: dict):
     """Return the total number of possible hyperparameters combinations.
-
     Args:
         config (dict): Hyperparameter configuration setting
     """

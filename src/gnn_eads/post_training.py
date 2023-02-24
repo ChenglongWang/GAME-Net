@@ -1,5 +1,5 @@
 """
-Module for post-processing and collecting data after GNN model training.
+Module for post-processing and collecting results from the GNN model training.
 """
 
 import os
@@ -13,7 +13,7 @@ import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
 
-from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI, METALS
+from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI
 from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
 from gnn_eads.graph_tools import plotter
 from gnn_eads.plot_functions import *
