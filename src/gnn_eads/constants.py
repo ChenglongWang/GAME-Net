@@ -76,7 +76,6 @@ sigma_dict = {"ReLU": ReLU(),
 
 # Others
 DPI = 500
-CHEMSPIPY = "NmdJjTAaDxkBoDYGrSRLQED9zKOhmqJ9"  # API key to access ChemSpider (1000 trials/month)
 
 RGB_COLORS = {'Xx': (0.07, 0.5, 0.7), 'H': (0.75, 0.75, 0.75),
               'He': (0.85, 1.0, 1.0), 'Li': (0.8, 0.5, 1.0),

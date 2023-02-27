@@ -57,13 +57,11 @@ Within this mode, you can opt between three different options:
 
 1. You already performed some DFT calculations with [VASP](https://www.vasp.at/) and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
-2. You have no DFT data for a specific system and want to get an estimation from our trained Graph Neural Networks. In this case, you will play with `interactive_graph_creator.py`, a GNN interface connected to the [ChemSpider](https://www.chemspider.com) database to help you draw the graph related to your specific case, providing the ground state energy of the system and the adsorption energy. See the demos in the `Media` directory. 
-
-    `python interactive_graph_creator.py`
-
-3. You can use GAME-Net as a web application. To run, type the following script from the repo root:
+2. (Work in progress) You have no DFT data for a specific system and want to get an estimation from our trained graph neural network. In this case, you can use GAME-Net as a web application. To run it, type the following script from the repo root:
 
     `python web/manage.py runserver --insecure`
+
+Open the link provided and the interface will appear. As example, see the demo video present in the `Media` folder.
 
 ### Training mode
 
