@@ -403,8 +403,8 @@ def create_loaders(datasets:tuple,
     for dataset in datasets:
         n_items = len(dataset)
         sep = n_items // split
-        dataset.shuffle()
-        if test == True:
+        dataset = dataset.shuffle()
+        if test:
             test_loader += (dataset[:sep])
             val_loader += (dataset[sep:sep*2])
             train_loader += (dataset[sep*2:])
