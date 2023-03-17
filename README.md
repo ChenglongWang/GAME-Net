@@ -29,17 +29,11 @@ Prerequisites for installing the Python code repository are [git](https://git-sc
     
     Check that you have created the new environment by typing `conda env list`: A list with all your environments appears, together with the newly created `GNN`. Activate it with `conda activate GNN` (you will see the name of the current active environment within parentheses on the left of the terminal prompt).  
 
-3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for performing hyperparameter optimization studies. Since they are not available in the conda channels, use pip to install them:  
+3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for performing hyperparameter optimization studies, and Django tools for trying the web app. Since they are not available in the conda channels, use pip to install them:  
   
-    `pip install pyrdtp ray`
+    `pip install pyrdtp ray django-cors-headers`
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp and ray in the list.
-
-4. (NEW!) To use GAME-Net locally as a web application, install Django and pydot:
-
-    `conda install -c conda-forge pydot`
-    `conda install -c anaconda django`
-    `pip install django-cors-headers`
 
 Done! Now everything is set up to start playing with the GNN framework!
 
@@ -57,7 +51,7 @@ Within this mode, you can opt between three different options:
 
 1. You already performed some DFT calculations with [VASP](https://www.vasp.at/) and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
-2. (Work in progress) You have no DFT data for a specific system and want to get an estimation from our trained graph neural network. In this case, you can use GAME-Net as a web application. To run it, type the following script from the repo root:
+2. You have no DFT data for a specific system and want to get an estimation from our trained graph neural network. In this case, you can use GAME-Net as a web application. To run it, type the following script from the repo root:
 
     `python web/manage.py runserver --insecure`
 
