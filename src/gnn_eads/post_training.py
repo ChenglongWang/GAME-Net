@@ -22,12 +22,12 @@ from gnn_eads.plot_functions import *
 def create_model_report(model_name: str,
                         model_path: str,
                         configuration_dict: dict,
-                        model,
+                        model: torch.nn.Module,
                         loaders: tuple[DataLoader],                     
-                        scaling_params : tuple[float], 
+                        scaling_params: tuple[float], 
                         mae_lists: tuple[list], 
                         device: dict=None):
-    """Create full report of the performed model training.
+    """Create full report of the performed GNN training.
 
     Args:
         model_name (str): name of the model.
@@ -44,74 +44,106 @@ def create_model_report(model_name: str,
     """
     print("Saving the model ...")
     
-    # Time of the run
+    # 1) Get time of the run
     today = date.today()
     today_str = str(today.strftime("%d-%b-%Y"))
     time = str(datetime.now())[11:]
     time = time[:8]
     run_period = "{}, {}\n".format(today_str, time)
         
-    # Unfold  train/val/test sets(loaders)
-    train_loader = loaders[0]
-    val_loader = loaders[1]
-    test_loader = loaders[2]
-    
-    # Get data labels in train/val/test sets
-    train_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in train_loader.dataset]
-    val_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in val_loader.dataset]
-    
-    # Unfold input dict
+    # 2) Unfold  train/val/test dataloaders
+    train_loader, val_loader, test_loader = loaders[0], loaders[1], loaders[2]
+    N_train, N_val = len(train_loader.dataset), len(val_loader.dataset)
+
+    # 3) Unfold hyperparameters
     graph = configuration_dict["graph"]
     train = configuration_dict["train"]
     architecture = configuration_dict["architecture"]
     
-    # Extract graph conversion parameters
+    # 4) Extract graph conversion parameters
     voronoi_tol = graph["voronoi_tol"]
     second_order_nn = graph["second_order_nn"]
     scaling_factor = graph["scaling_factor"]
     
-    # Scaling parameters
+    # 5) Extract model scaling parameters
     if train["target_scaling"] == "std":
         mean_tv = scaling_params[0]
         std_tv = scaling_params[1]
     else:
         pass
     
-    # MAE trend during training
-    train_list = mae_lists[0]
-    val_list = mae_lists[1]
-    test_list = mae_lists[2]
-    lr_list = mae_lists[3]
-
-    # Create directory structures where to store model files
+    # 6) Create directory structure where to store model training results
     try:
         os.mkdir("{}/{}".format(model_path, model_name))
     except FileExistsError:
         model_name = input("The name defined already exists in the provided directory: Provide a new one: ")
         os.mkdir("{}/{}".format(model_path, model_name))
     os.mkdir("{}/{}/Outliers".format(model_path, model_name))
-    # Save dataloaders for future use
-    torch.save(train_loader, "{}/{}/train_loader.pth".format(model_path, model_name))
-    torch.save(val_loader, "{}/{}/val_loader.pth".format(model_path, model_name))
-    
-    # Store info about GNN architecture # NOT NEEDED NOW AS THE FLEXIBLE NET ALWAYS INCUDES EVERYTHING 
-    # with open('./Models/{}/architecture.txt'.format(model_name), 'w') as f:
-    #    print(summary(model, batch_dim=train["batch_size"], verbose=2), file=f)
-    
-    # Save model architecture and parameters
-    torch.save(model, "{}/{}/model.pth".format(model_path, model_name)) 
-    torch.save(model.state_dict(), "{}/{}/GNN.pth".format(model_path, model_name))
-        
-    # Store info of device on which model training has been performed
+
+    # 7) Store info of device on which model training has been performed
     if device != None:
         with open('{}/{}/device.txt'.format(model_path, model_name), 'w') as f:
             print(device, file=f)
+
+    # 8) Get predictions and true values and save them in a csv file for train/val sets
+    model.eval()
+    model.to("cpu")
+    x_pred, x_true = [], []  # Train set
+    a_pred, a_true = [], []  # Validation set
+    for batch in train_loader:
+        batch = batch.to("cpu")
+        with torch.no_grad():
+            x_pred += model(batch)
+            x_true += batch.y
+    for batch in val_loader:
+        batch = batch.to("cpu")
+        with torch.no_grad():
+            a_pred += model(batch)
+            a_true += batch.y
+    # Re-scale predictions and true values
+    z_pred = [x_pred[i].item()*std_tv + mean_tv for i in range(N_train)]  # Train set
+    z_true = [x_true[i].item()*std_tv + mean_tv for i in range(N_train)]
+    b_pred = [a_pred[i].item()*std_tv + mean_tv for i in range(N_val)]  # Val set
+    b_true = [a_true[i].item()*std_tv + mean_tv for i in range(N_val)]
+    error_train = [(z_pred[i] - z_true[i]) for i in range(N_train)]                   # Error (train set)
+    error_val = [(b_pred[i] - b_true[i]) for i in range(N_val)]                       # Error (validation set)
+    abs_error_train = [abs(error_train[i]) for i in range(N_train)]                   # Absolute Error (train set)
+    abs_error_val = [abs(error_val[i]) for i in range(N_val)]                         # Absolute Error (val set)
+    # Get data labels in train/val sets
+    train_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in train_loader.dataset]
+    val_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in val_loader.dataset]
+    train_family_list = [graph.family for graph in train_loader.dataset]
+    val_family_list = [graph.family for graph in val_loader.dataset]
+    
+    with open("{}/{}/train_set.csv".format(model_path, model_name), "w") as file4:
+        writer = csv.writer(file4, delimiter='\t')
+        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(train_label_list, train_family_list, z_true, z_pred, error_train, abs_error_train))    
+    with open("{}/{}/validation_set.csv".format(model_path, model_name), "w") as file4:
+        writer = csv.writer(file4, delimiter='\t')
+        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(val_label_list, val_family_list, b_true, b_pred, error_val, abs_error_val))
+
+    # MAE trend during training
+    train_list = mae_lists[0]
+    val_list = mae_lists[1]
+    test_list = mae_lists[2]
+    lr_list = mae_lists[3]
+
+    # 9) Save dataloaders for future use
+    torch.save(train_loader, "{}/{}/train_loader.pth".format(model_path, model_name))
+    torch.save(val_loader, "{}/{}/val_loader.pth".format(model_path, model_name))
+    
+    # 10) Save model architecture and parameters
+    torch.save(model, "{}/{}/model.pth".format(model_path, model_name))             # Save model architecture
+    torch.save(model.state_dict(), "{}/{}/GNN.pth".format(model_path, model_name))  # Save model parameters
+        
             
-    # Store Hyperparameters dict from input file
+    # 11) Store Hyperparameters dict from input file
     with open('{}/{}/input.txt'.format(model_path, model_name), 'w') as g:
         print(configuration_dict, file=g)
 
-    # Store train_list, val_list, test_list, lr_list in a csv file
+    # 12) Store train_list, val_list, and lr_list as .csv file
     with open('{}/{}/training.csv'.format(model_path, model_name), 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         if train["test_set"] == False:
@@ -125,9 +157,6 @@ def create_model_report(model_name: str,
 
     
     loss = train["loss_function"] 
-        
-    N_train = len(train_loader.dataset)
-    N_val = len(val_loader.dataset)
     if train["test_set"] == False: 
         N_tot = N_train + N_val
         file1 = open("{}/{}/performance.txt".format(model_path, model_name), "w")
@@ -154,38 +183,32 @@ def create_model_report(model_name: str,
         file1.close()
         return "Model saved in {}/{}".format(model_path, model_name)
     
+    # 13) Get info from test set if it has been monitored
     torch.save(test_loader, "{}/{}/test_loader.pth".format(model_path, model_name))
     test_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in test_loader.dataset]
     test_family_list = [graph.family for graph in test_loader.dataset]
-    train_family_list = [graph.family for graph in train_loader.dataset]
-    val_family_list = [graph.family for graph in val_loader.dataset]
     N_test = len(test_loader.dataset)  
     N_tot = N_train + N_val + N_test    
-    model.eval()
-    model.to("cpu")
-    
     w_pred, w_true = [], []  # Test set
-    x_pred, x_true = [], []  # Train set
-    a_pred, a_true = [], []  # Validation set
-    
     for batch in test_loader:
-        batch = batch.to("cpu")
-        w_pred += model(batch)
-        w_true += batch.y
-    for batch in train_loader:
-        batch = batch.to("cpu")
-        x_pred += model(batch)
-        x_true += batch.y
-    for batch in val_loader:
-        batch = batch.to("cpu")
-        a_pred += model(batch)
-        a_true += batch.y
+        with torch.no_grad():
+            batch = batch.to("cpu")
+            w_pred += model(batch)
+            w_true += batch.y
     y_pred = [w_pred[i].item()*std_tv + mean_tv for i in range(N_test)]  # Test set
-    y_true = [w_true[i].item()*std_tv + mean_tv for i in range(N_test)]
-    z_pred = [x_pred[i].item()*std_tv + mean_tv for i in range(N_train)]  # Train set
-    z_true = [x_true[i].item()*std_tv + mean_tv for i in range(N_train)]
-    b_pred = [a_pred[i].item()*std_tv + mean_tv for i in range(N_val)]  # Val set
-    b_true = [a_true[i].item()*std_tv + mean_tv for i in range(N_val)]
+    y_true = [w_true[i].item()*std_tv + mean_tv for i in range(N_test)] 
+    error_test = [(y_pred[i] - y_true[i]) for i in range(N_test)]                     # Error (test set)
+    abs_error_test = [abs(error_test[i]) for i in range(N_test)]                      # Absolute Error (test set)
+    squared_error_test = [error_test[i] ** 2 for i in range(N_test)]                  # Squared Error
+    abs_pctg_error_test = [abs(error_test[i] / y_true[i]) for i in range(N_test)]     # Absolute Percentage Error
+    std_error_test = np.std(error_test)                                               # eV
+    # Save test set error of the samples            
+    with open("{}/{}/test_set.csv".format(model_path, model_name), "w") as file4:
+        writer = csv.writer(file4, delimiter='\t')
+        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(test_label_list, test_family_list, y_true, y_pred, error_test, abs_error_test))    
+
+    # 14) FIGURES
     # Histogram based on number of adsorbate atoms (train+val+test dataset)
     n_list = [get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])) for graph in \
               train_loader.dataset+val_loader.dataset+test_loader.dataset]
@@ -200,11 +223,6 @@ def create_model_report(model_name: str,
     fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
     plt.savefig("{}/{}/test_violin_family.svg".format(model_path, model_name), bbox_inches='tight')
     plt.close()
-    # Violinplot sorted by metal
-    # fig, ax = violinplot_metal(model, test_loader, std_tv, METALS)
-    # plt.savefig("{}/{}/test_violin_metal.svg".format(model_path, model_name), bbox_inches='tight')
-    # plt.close()
-    # Parity plot (GNN vs DFT) for train, val, test
     my_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
     for key, value in my_dict.items():
         fig, ax = DFTvsGNN_plot(model, value, mean_tv, std_tv)
@@ -218,17 +236,7 @@ def create_model_report(model_name: str,
     # Learning process: MAE vs epoch
     fig, ax = training_plot(train_list, val_list, test_list, train["splits"])
     plt.savefig("{}/{}/learning_curve.svg".format(model_path, model_name), bbox_inches='tight')
-    plt.close()
-    # Error analysis 
-    error_test = [(y_pred[i] - y_true[i]) for i in range(N_test)]                     # Error (test set)
-    error_train = [(z_pred[i] - z_true[i]) for i in range(N_train)]                   # Error (train set)
-    error_val = [(b_pred[i] - b_true[i]) for i in range(N_val)]                       # Error (validation set)
-    abs_error_test = [abs(error_test[i]) for i in range(N_test)]                      # Absolute Error (test set)
-    abs_error_train = [abs(error_train[i]) for i in range(N_train)]                   # Absolute Error (train set)
-    abs_error_val = [abs(error_val[i]) for i in range(N_val)]                         # Absolute Error (val set)
-    squared_error_test = [error_test[i] ** 2 for i in range(N_test)]                  # Squared Error
-    abs_pctg_error_test = [abs(error_test[i] / y_true[i]) for i in range(N_test)]     # Absolute Percentage Error
-    std_error_test = np.std(error_test)                                        # eV
+    plt.close()    
     # Test set: Error distribution plot
     sns.displot(error_test, bins=50, kde=True)
     plt.tight_layout()
@@ -281,6 +289,7 @@ def create_model_report(model_name: str,
     file1.write("R2 = {:.3f} \n".format(r2_score(y_true, y_pred)))
     file1.write("---------------------------------------------------------\n")
     file1.write("OUTLIERS (TEST SET)\n")
+    # 15) Get outliers
     outliers_list, outliers_error_list, index_list = [], [], []
     counter = 0
     for sample in range(N_test):
@@ -297,18 +306,4 @@ def create_model_report(model_name: str,
             plt.savefig("{}/{}/Outliers/{}.svg".format(model_path, model_name, test_label_list[sample].strip()))
             plt.close()
     file1.close()
-    
-    # Save train, val, test set error of the samples            
-    with open("{}/{}/test_set.csv".format(model_path, model_name), "w") as file4:
-        writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(test_label_list, test_family_list, y_true, y_pred, error_test, abs_error_test))    
-    with open("{}/{}/train_set.csv".format(model_path, model_name), "w") as file4:
-        writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(train_label_list, train_family_list, z_true, z_pred, error_train, abs_error_train))    
-    with open("{}/{}/validation_set.csv".format(model_path, model_name), "w") as file4:
-        writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True [eV]", "Prediction [eV]", "Error [eV]", "Abs. error [eV]"])
-        writer.writerows(zip(val_label_list, val_family_list, b_true, b_pred, error_val, abs_error_val))
     return "Model saved in {}/{}".format(model_path, model_name)

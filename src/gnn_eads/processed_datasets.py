@@ -6,8 +6,9 @@ from gnn_eads.constants import ENCODER, FAMILY_DICT, METALS
 from gnn_eads.graph_filters import global_filter, isomorphism_test
 from gnn_eads.functions import get_graph_formula
 
-class HetGraphDataset(InMemoryDataset):
+class FGGraphDataset(InMemoryDataset):
     """
+    Class for storing the graphs of a specific family of the FG-dataset (e.g., aromatic, amides, etc.)
     InMemoryDataset is the abstract class for creating custom datasets.
     Each dataset gets passed a dataset folder which indicates where the dataset should
     be stored. The dataset folder is split up into 2 folders, a raw_dir where the dataset gets downloaded to,
@@ -91,28 +92,28 @@ def create_post_processed_datasets(identifier: str,
         FG_dataset (tuple[HetGraphDataset]): FG_dataset
     """
     
-    aromatics_dataset = HetGraphDataset(str(paths['aromatics']['root']), identifier)
-    group2_dataset = HetGraphDataset(str(paths['group2']['root']), identifier)
-    group2b_dataset = HetGraphDataset(str(paths['group2b']['root']), identifier)
-    aromatics2_dataset = HetGraphDataset(str(paths['aromatics2']['root']), identifier)
-    carbamate_esters_dataset = HetGraphDataset(str(paths['carbamate_esters']['root']), identifier)
-    group3N_dataset = HetGraphDataset(str(paths['group3N']['root']), identifier)
-    group3S_dataset = HetGraphDataset(str(paths['group3S']['root']), identifier)
-    group4_dataset = HetGraphDataset(str(paths['group4']['root']), identifier)
-    amides_dataset = HetGraphDataset(str(paths['amides']['root']), identifier)
-    amidines_dataset = HetGraphDataset(str(paths['amidines']['root']), identifier)
-    oximes_dataset = HetGraphDataset(str(paths['oximes']['root']), identifier)
-    gas_amides_dataset = HetGraphDataset(str(paths['gas_amides']['root']), identifier)
-    gas_amidines_dataset = HetGraphDataset(str(paths['gas_amidines']['root']), identifier)
-    gas_aromatics_dataset = HetGraphDataset(str(paths['gas_aromatics']['root']), identifier)
-    gas_aromatics2_dataset = HetGraphDataset(str(paths['gas_aromatics2']['root']), identifier)
-    gas_group2_dataset = HetGraphDataset(str(paths['gas_group2']['root']), identifier)
-    gas_group2b_dataset = HetGraphDataset(str(paths['gas_group2b']['root']), identifier)
-    gas_group3N_dataset = HetGraphDataset(str(paths['gas_group3N']['root']), identifier)
-    gas_group3S_dataset = HetGraphDataset(str(paths['gas_group3S']['root']), identifier)
-    gas_carbamate_esters_dataset = HetGraphDataset(str(paths['gas_carbamate_esters']['root']), identifier)
-    gas_oximes_dataset = HetGraphDataset(str(paths['gas_oximes']['root']), identifier)
-    gas_group4_dataset = HetGraphDataset(str(paths['gas_group4']['root']), identifier)
+    aromatics_dataset = FGGraphDataset(str(paths['aromatics']['root']), identifier)
+    group2_dataset = FGGraphDataset(str(paths['group2']['root']), identifier)
+    group2b_dataset = FGGraphDataset(str(paths['group2b']['root']), identifier)
+    aromatics2_dataset = FGGraphDataset(str(paths['aromatics2']['root']), identifier)
+    carbamate_esters_dataset = FGGraphDataset(str(paths['carbamate_esters']['root']), identifier)
+    group3N_dataset = FGGraphDataset(str(paths['group3N']['root']), identifier)
+    group3S_dataset = FGGraphDataset(str(paths['group3S']['root']), identifier)
+    group4_dataset = FGGraphDataset(str(paths['group4']['root']), identifier)
+    amides_dataset = FGGraphDataset(str(paths['amides']['root']), identifier)
+    amidines_dataset = FGGraphDataset(str(paths['amidines']['root']), identifier)
+    oximes_dataset = FGGraphDataset(str(paths['oximes']['root']), identifier)
+    gas_amides_dataset = FGGraphDataset(str(paths['gas_amides']['root']), identifier)
+    gas_amidines_dataset = FGGraphDataset(str(paths['gas_amidines']['root']), identifier)
+    gas_aromatics_dataset = FGGraphDataset(str(paths['gas_aromatics']['root']), identifier)
+    gas_aromatics2_dataset = FGGraphDataset(str(paths['gas_aromatics2']['root']), identifier)
+    gas_group2_dataset = FGGraphDataset(str(paths['gas_group2']['root']), identifier)
+    gas_group2b_dataset = FGGraphDataset(str(paths['gas_group2b']['root']), identifier)
+    gas_group3N_dataset = FGGraphDataset(str(paths['gas_group3N']['root']), identifier)
+    gas_group3S_dataset = FGGraphDataset(str(paths['gas_group3S']['root']), identifier)
+    gas_carbamate_esters_dataset = FGGraphDataset(str(paths['gas_carbamate_esters']['root']), identifier)
+    gas_oximes_dataset = FGGraphDataset(str(paths['gas_oximes']['root']), identifier)
+    gas_group4_dataset = FGGraphDataset(str(paths['gas_group4']['root']), identifier)
     FG_dataset = (group2_dataset,
                group2b_dataset,
                aromatics_dataset,
