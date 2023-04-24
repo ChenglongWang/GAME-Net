@@ -75,9 +75,11 @@ Within this mode, you can choose among three available ways to use the GNN:
     `python hypopt_GNN.py -o hypopt_test -s 2000 -gr 15 -gpt 0.5`
 
 
-## Notebooks
+## Notebooks and data
 
 To reproduce some of the results presented in the article, we provide some Jupyter notebooks in the `notebooks` folder. These contain information mainly related to GAME-Net testing with different datasets (BM-dataset, external literature datasets).
+
+The DFT training data for GAME-Net are provided in raw format (VASP CONTCAR files) as geometries and energies are directly retrieved from the output files. However, for easier manipulation, we provide the DFT dataset also as an [ASE](https://wiki.fysik.dtu.dk/ase/) database in the `data/FG_dataset` folder as `FG_dataset.db`.
 
 # Authors
 
