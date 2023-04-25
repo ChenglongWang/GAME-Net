@@ -51,26 +51,24 @@ Within this mode, you can opt between three different options:
 
 1. You already performed some DFT calculations with [VASP](https://www.vasp.at/) and want to compare the performance of the GNN models with the ground-truth provided by your data. In this case, the main script you will work with is `GNNvsDFT.py`.
 
-2. You have no DFT data for a specific system and want to get an estimation from our trained graph neural network. In this case, you can use GAME-Net as a web application. To run it, type the following script from the repo root:
+2. You have no DFT data for a specific system and want to get an estimation from our trained graph neural network. In this case, you can use GAME-Net as a web application following the link: [GAME-Net](https://doi.org/10.19061/game-net).
 
-    `python web/manage.py runserver --insecure`
-
-Open the link provided and the interface will appear. As example, see the demo video present in the `Media` folder.
+As example, see the demo video present in the `Media` folder. This interface is under construction and will be improved in the near future.
 
 ### Training mode
 
 The DFT datasets are stored in [ioChem-BD](https://doi.org/10.19061/iochem-bd-1-257), and the needed samples for GAME-Net are in the `data/FG_dataset` folder.
 Within this mode, you can choose among three available ways to use the GNN:
 
-1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameter settings must be provided via a .toml file (you will find some input templates in the `scripts` folder). Once created, type: 
+1. Perform a model training with your own model architecture and hyperparameter setting: To do so, follow the instructions provided in the Jupyter notebook `train_GNN.ipynb`, or directly run the script `train_GNN.py`. The hyperparameters must be provided via a .toml file (you will find some input templates in the `scripts` folder). Once created, type: 
 
-    `python train_GNN.py -i hyper_config.toml`
+    `python train_GNN.py -i hyper_config.toml -o output_directory`
 
-    To check the documentation of the script, type `python train_GNN.py -h`.
+    where `output_directory` is the path where the output will be stored. To check the documentation of the script, type `python train_GNN.py -h`.
 
 2. Run a nested cross-validation to assess the generalization performance on the FG-dataset. The script for this task is `nested_cross_validation_GNN.py`.
 
-3. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to launch a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
+3. Perform a hyperparameter optimization using the Asynchronous Successive Halving (ASHA) scheduler provided by Ray Tune. You can study the effect of all hyperparameters on the final model performance (e.g., learning rate, loss function) and you can also test different model architecture automatically, without the need of manually defining the architecture. The script you have to use in this case is `hypopt_GNN.py`. For this script, the hyperparameter space must be defined in the script before running it. For example, to perform a hyperparameter optimization called `hypopt_test` with 2000 trials, each one with a grace period of 15 epochs and providing 0.5 GPUs for each trial (e.g., two trials per GPU), type:
 
     `python hypopt_GNN.py -o hypopt_test -s 2000 -gr 15 -gpt 0.5`
 
