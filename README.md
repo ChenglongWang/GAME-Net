@@ -81,8 +81,8 @@ The DFT training data for GAME-Net are provided in raw format (VASP CONTCAR file
 
 # Authors
 
-Santiago Morandi, doctoral researcher, Núria López group (Institut Català d'Investigació Química, Spain)  
-Sergio Pablo-García, postdoctoral researcher, The Matter Lab, Alán Aspuru-Guzik group (University of Toronto, Canada)
+Santiago Morandi, doctoral researcher, Núria López group (Institut Català d'Investigació Química, Spain), NCCR Catalysis member. 
+Sergio Pablo-García, postdoctoral researcher, The Matter Lab, Alán Aspuru-Guzik group (University of Toronto, Canada).
 
 # Contributors
 
