@@ -1,15 +1,13 @@
 import os
-import subprocess as sb
 import ase
 import networkx as nx
 from ase import io  
-from pathlib import Path
 
 
 
 DOS_PATH = os.path.abspath("../dockonsurf/dockonsurf.py")
 
-def connectivity_annalysis(graph: nx.Graph) -> list:
+def connectivity_analysis(graph: nx.Graph) -> list:
     """This function will return a list with the number of connections for each atom in the molecule.
     Parameters
     ----------
@@ -107,25 +105,6 @@ def gen_docksurf_file(tmp_subdir: str, molecule_id: str, mol_obj: ase.Atoms, con
         write.writelines(data)
     return
 
-def run_dockonsurf(run_path: str) -> None:
-    """Runs the dockonsurf.py script for all the dockonsurf.inp files in the run_path directory.
-
-    Parameters
-    ----------
-    run_path : str
-        Path to the directory (folder) where the dockonsurf.inp files are located.
-    Returns
-    -------
-    None
-    """
-    init_path = os.getcwd()
-    for root, dirs, files in os.walk(run_path):
-        for file in files:
-            if file.endswith(".inp"):
-                os.chdir(root)
-                sb.call(["python", DOS_PATH, "-i", file])
-                print('DOS_PATH: ', DOS_PATH)
-                os.chdir(init_path)
 
 def bottom_poscar(axis: int, run_directory: str) -> None:
     """Drags the structure to the bottom along the selected axis.

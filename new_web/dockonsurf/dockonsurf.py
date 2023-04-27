@@ -36,9 +36,6 @@ def dockonsurf():
 args = get_args()
 logger = config_log('DockOnSurf')
 
-print("Running DockOnSurf.\n"
-      f"To check DockOnSurf activity see '{logger.handlers[0].baseFilename}'.")
-
 if args.foreground:
     dockonsurf()
 else:
