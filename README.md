@@ -81,12 +81,15 @@ The DFT training data for GAME-Net are provided in raw format (VASP CONTCAR file
 
 # Authors
 
-Santiago Morandi, doctoral researcher, Núria López group (Institut Català d'Investigació Química, Spain), NCCR Catalysis member. 
+Santiago Morandi, doctoral researcher, Núria López group (ICIQ, Spain), NCCR Catalysis member. 
 Sergio Pablo-García, postdoctoral researcher, The Matter Lab, Alán Aspuru-Guzik group (University of Toronto, Canada).
 
 # Contributors
 
-Žarko Ivković, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the creation of part of the DFT dataset and interface testing.
+Žarko Ivković, M.Sc. student, University of Barcelona, ICIQ Summer Fellow 2022; involved in the extension of the DFT dataset and interface testing.
+Moisés Álvarez Moreno, programmer, López group (ICIQ, Spain). Involved in the web app development.
+Oliver Loveday, doctoral researcher, López group (ICIQ, Spain). Involved in the coupling of GAME-Net with screening routines.
+Javier Heras-Domingo, postdoctoral researcher, López group (ICIQ, Spain). Helped in fixing a critical code bug.
 
 # License
 
