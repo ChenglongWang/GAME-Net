@@ -1,0 +1,15 @@
+name: dockonsurf
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - matplotlib>=3.2.1
+  - numpy>=1.16.6
+  - rdkit>=2019.09.3
+  - scikit-learn>=0.23.1
+  - hdbscan>=0.8.26
+  - ase>=3.19.1
+  - networkx>=2.4
+  - python-daemon=>2.2.4
+  - pymatgen>=2020.11.11
+  - pycp2k>=0.2.2
