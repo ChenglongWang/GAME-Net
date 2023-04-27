@@ -31,7 +31,7 @@ Prerequisites for installing the Python code repository are [git](https://git-sc
 
 3. Install [PyRDTP](https://gitlab.com/iciq-tcc/nlopez-group/pyrdtp), an in-house package for manipulating chemical structures, and [Ray](https://docs.ray.io/en/latest/index.html), a tool for performing hyperparameter optimization studies, and Django tools for trying the web app. Since they are not available in the conda channels, use pip to install them:  
   
-    `pip install pyrdtp ray django-cors-headers`
+    `pip install pyrdtp ray django-cors-headers pubchempy rdkit python-daemon`
 
     To check the correctness of the installation, type `conda list` and check out the presence of pyrdtp and ray in the list.
 
