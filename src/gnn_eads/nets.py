@@ -121,4 +121,5 @@ class PreTrainedModel():
         Returns:
             float: system energy in eV
         """
-        return self.model(graph).item() * self.std + self.mean
+        with torch.no_grad():
+            return self.model(graph).item() * self.std + self.mean

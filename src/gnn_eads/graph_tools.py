@@ -157,12 +157,13 @@ def extract_adsorbate(graph: Data) -> Data:
         switch = 0
     # 3) Graph construction
     x = torch.zeros((len(node_list), len(ELEMENT_LIST)))
-    edge = torch.zeros((2, len(edge_index)))
+    edge = torch.zeros((2, len(edge_index)), dtype=torch.long)
     for i in range(x.shape[0]):
         x[i, :] = node_list[i]
     for j in range(2):
         for k in range(edge.shape[1]):
-            edge[j, k] = ff(edge_list[k][j])
+            edge[j, k] = ff(int(edge_list[k][j]))
+    edge.to(torch.long)
     return Data(x, edge)
 
 
