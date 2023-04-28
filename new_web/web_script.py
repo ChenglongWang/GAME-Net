@@ -9,12 +9,13 @@ sys.path.insert(0, "./adsurf")
 import subprocess as sb
 import shutil
 
-import pubchempy as pcp
+from pubchempy import get_compounds, Compound
 from ase.io import read, write
 from ase.db import connect
-import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
+from matplotlib.pyplot import savefig
+from pandas import DataFrame
+from numpy import sqrt, max
+from numpy.linalg import norm
 from pymatgen.io.ase import AseAtomsAdaptor
 
 from adsurf.graphs.graph_utilities import ase_2_graph
@@ -162,10 +163,10 @@ def gen_dockonsurf_input(molecule: str,
         Canonical SMILES of the molecule   
     """
     # Retrieve the molecule from PubChem
-    pubchem_molecule = pcp.get_compounds(
+    pubchem_molecule = get_compounds(
         molecule, molecule_format, record_type='3d', listkey_count=1)[0]    
     pubchem_cid = pubchem_molecule.cid
-    c = pcp.Compound.from_cid(pubchem_cid)
+    c = Compound.from_cid(pubchem_cid)
     iupac_name = c.iupac_name
     canonical_smiles = c.canonical_smiles
     
@@ -187,7 +188,7 @@ def gen_dockonsurf_input(molecule: str,
     # Convert xyz file to ASE object and get the distance between the furthest atoms
     molec_ase_obj = read(molecule_xyz_file)
     molec_dist_mat = molec_ase_obj.get_all_distances(mic=True)
-    max_dist_molec = np.max(molec_dist_mat)
+    max_dist_molec = max(molec_dist_mat)
     print('Distance between furthest atoms in the molecule: {:.2f} Angstrom'.format(max_dist_molec))
 
     # Convert ASE object to graph and get potential molecular centers for adsorption
@@ -202,7 +203,7 @@ def gen_dockonsurf_input(molecule: str,
     full_facet = f"{metal_struct}({surface_facet})"
     slab_ase_obj = surf_db.get_atoms(metal=metal, facet=full_facet)
     a, b, _ = slab_ase_obj.get_cell()
-    slab_diagonal = np.sqrt(np.linalg.norm(a)**2 + np.linalg.norm(b)**2)
+    slab_diagonal = sqrt(norm(a)**2 + norm(b)**2)
     print('Surface x-y extension: {:.2f} Angstrom'.format(slab_diagonal))
 
     # Check if molecule fits on reference metal slab, if not scale the surface
@@ -219,7 +220,7 @@ def gen_dockonsurf_input(molecule: str,
             pymatgen_slab.make_supercell([counter, counter, 1])
             slab_ase_obj = AseAtomsAdaptor.get_atoms(pymatgen_slab)
             a, b, _ = slab_ase_obj.get_cell()
-            slab_diagonal = np.sqrt(np.linalg.norm(a*counter)**2 + np.linalg.norm(b*counter)**2)
+            slab_diagonal = sqrt(norm(a*counter)**2 + norm(b*counter)**2)
             condition = slab_diagonal - tolerance > max_dist_molec
         print('Reference metal slab scaled by factor {} on the x-y plane\n'.format(counter)) 
     
@@ -250,8 +251,7 @@ def gen_dockonsurf_input(molecule: str,
                 os.chdir(root)
                 sb.call(["python", dockonsurf_path, "-i", file])
                 os.chdir(init_path)
-    time.sleep(5)  # Wait for DockonSurf (5 seconds) to finish before proceeding
-    bottom_poscar(2, tmp_subdir)  
+      
     return tmp_subdir, iupac_name, canonical_smiles
 
 if __name__ == "__main__":
@@ -303,7 +303,7 @@ if __name__ == "__main__":
 
         print(f"Progress: {PRG_FULL*prc}{PRG_EMT*(TOT_ICN-prc)} ({prc*100/TOT_ICN}%)", end="\r")
 
-    df = pd.DataFrame({'counter': counter_list, 'poscar': poscar_list, 'ensemble': energy_ensemble,
+    df = DataFrame({'counter': counter_list, 'poscar': poscar_list, 'ensemble': energy_ensemble,
                           'molecule': energy_molecule, 'adsorption': adsorption_energy})
     df = df[df['adsorption'] != None]
     df.to_csv(os.path.join(tmp_subdir, 'prediction.csv'))
@@ -330,6 +330,8 @@ if __name__ == "__main__":
     molecule_most_stable_conf = df[df['adsorption'] == df['adsorption'].min()]['molecule'].values[0]
     most_stable_conf_path = df[df['adsorption'] == df['adsorption'].min()]['poscar'].values[0]
     system_title = iupac_name + ' on ' + metal_surface
+    # Bottoming the POSCARs
+    bottom_poscar(2, tmp_subdir)
     print('\n\nSystem: ', system_title) 
     print('Canonical SMILES: ', canonical_smiles)
     print('Metal surface: {}'.format(metal_surface))
@@ -340,4 +342,4 @@ if __name__ == "__main__":
     ads_graph = structure_to_graph(
         most_stable_conf_path, model.g_tol, model.g_sf, model.g_metal_2nn)
     plotter(ads_graph, dpi=300)
-    plt.savefig(os.path.join(tmp_subdir,"most_stable_ads_graph.png"))
+    savefig(os.path.join(tmp_subdir,"most_stable_ads_graph.png"))
