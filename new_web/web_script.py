@@ -167,11 +167,16 @@ def gen_dockonsurf_input(molecule: str,
         molecule, molecule_format, record_type='3d', listkey_count=1)[0]    
     pubchem_cid = pubchem_molecule.cid
     c = Compound.from_cid(pubchem_cid)
-    iupac_name = c.iupac_name
     canonical_smiles = c.canonical_smiles
     
     # Create output directory for the studied adsorption system
-    iupac_file_name = iupac_name.replace(' ', '_').replace('(', '_').replace(')', '_').replace("'", "")
+    try:
+        iupac_name = c.iupac_name
+        iupac_file_name = iupac_name.replace(' ', '_').replace('(', '_').replace(')', '_').replace("'", "").replace(',', '_').replace('[', '_').replace(']', '_').replace('-', '_')
+    except:
+        iupac_name = molecule
+        iupac_file_name = iupac_name.replace(' ', '_').replace('(', '_').replace(')', '_').replace("'", "").replace(',', '_').replace('[', '_').replace(']', '_').replace('-', '_')
+
     tmp_subdir = os.path.join(
         OUTPUT_DIR, f"{iupac_file_name}_{metal}{surface_facet.replace('(', '_').replace(')', '').replace(' ', '')}")
     os.makedirs(tmp_subdir, exist_ok=True)
@@ -251,7 +256,7 @@ def gen_dockonsurf_input(molecule: str,
                 os.chdir(root)
                 sb.call(["python", dockonsurf_path, "-i", file])
                 os.chdir(init_path)
-      
+    time.sleep(5)
     return tmp_subdir, iupac_name, canonical_smiles
 
 if __name__ == "__main__":
