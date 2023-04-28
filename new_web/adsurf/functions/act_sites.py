@@ -1,4 +1,4 @@
-from pymatgen.core.structure import IStructure
+from pymatgen.core.structure import Structure
 from pymatgen.analysis.adsorption import AdsorbateSiteFinder
 import numpy as np
 
@@ -16,9 +16,9 @@ def get_act_sites(metal_poscar: str) -> dict:
     dict
         Dictionary with the atom indexes of each active site type.
     """
-    surface = IStructure.from_file(metal_poscar)
+    surface = Structure.from_file(metal_poscar)
     surf_sites = AdsorbateSiteFinder(surface, selective_dynamics=True)
-    most_active_sites = surf_sites.find_adsorption_sites(put_inside=True)
+    most_active_sites = surf_sites.find_adsorption_sites()
 
     surface_sites = surf_sites.surface_sites
 
