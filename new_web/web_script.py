@@ -13,7 +13,6 @@ from pubchempy import get_compounds, Compound
 from ase.io import read, write
 from ase.db import connect
 from matplotlib.pyplot import savefig
-from pandas import DataFrame
 from numpy import sqrt, max
 from numpy.linalg import norm
 from pymatgen.io.ase import AseAtomsAdaptor
@@ -28,11 +27,6 @@ from gnn_eads.functions import structure_to_graph
 PRG_FULL = "▰"
 PRG_EMT = "▱"
 TOT_ICN = 20
-
-
-# Load pre-trained GNN model on CPU
-MODEL_PATH = "../models/GAME-Net"
-model = PreTrainedModel(MODEL_PATH)
 
 
 def gnn_predict(poscar_path: str) -> tuple:
@@ -54,22 +48,10 @@ def gnn_predict(poscar_path: str) -> tuple:
     """
 
     ads_graph = structure_to_graph(
-        poscar_path, model.g_tol, model.g_sf, model.g_metal_2nn)
-    
-    molecule_graph = extract_adsorbate(ads_graph)
-
-    if ads_graph.num_nodes == molecule_graph.num_nodes:
-        adsorption_system = False
-    else:
-        adsorption_system = True
-
+        poscar_path, model.g_tol, model.g_sf, model.g_metal_2nn)    
     energy_ensemble = model.evaluate(ads_graph)
-    if adsorption_system:
-        energy_molecule = model.evaluate(molecule_graph)
-        adsorption_energy = energy_ensemble - energy_molecule
-        return (energy_ensemble, energy_molecule, adsorption_energy, adsorption_system)
-    else:
-        return (energy_ensemble, energy_ensemble, None, adsorption_system)
+    return energy_ensemble
+    
 
 
 def walk_through_poscars(dos_path: str) -> dict:
@@ -105,27 +87,22 @@ def walk_through_poscars(dos_path: str) -> dict:
     print("Total number of potential adsorption configurations: ", counter)
     return poscar_dict
 
-def metal_structure(metal: str) -> str:
-    """Return the structure of the metal.
-
-    Parameters
-    ----------
-    metal : str
-        Name of the metal
-
-    Returns
-    -------
-    structure : str
-        Structure of the metal
-    """
-    if metal.capitalize() in ("Ag", "Au", "Cu", "Ir", "Ni", "Pd", "Pt", "Rh"):
-        return "fcc"
-    elif metal.capitalize() in ("Cd", "Co", "Os", "Ru", "Zn"):
-        return "hcp"
-    elif metal.capitalize() in ("Fe"):
-        return "bcc"
-    else:
-        return "Unknown"
+metal_structure_dict = {
+    "Ag": "fcc",
+    "Au": "fcc",
+    "Cd": "hcp",
+    "Co": "hcp",
+    "Cu": "fcc",
+    "Fe": "bcc",
+    "Ir": "fcc",
+    "Ni": "fcc",
+    "Os": "hcp",
+    "Pd": "fcc",
+    "Pt": "fcc",
+    "Rh": "fcc",
+    "Ru": "hcp",
+    "Zn": "hcp"
+}
 
 def gen_dockonsurf_input(molecule: str,
                          metal: str,
@@ -204,7 +181,7 @@ def gen_dockonsurf_input(molecule: str,
     surf_db_path = './adsurf/data/metal_surfaces.db'
     surf_db = connect(surf_db_path)
     slab_poscar_file = os.path.join(tmp_subdir, "POSCAR")
-    metal_struct = metal_structure(metal)
+    metal_struct = metal_structure_dict[metal]
     full_facet = f"{metal_struct}({surface_facet})"
     slab_ase_obj = surf_db.get_atoms(metal=metal, facet=full_facet)
     a, b, _ = slab_ase_obj.get_cell()
@@ -212,15 +189,15 @@ def gen_dockonsurf_input(molecule: str,
     print('Surface x-y extension: {:.2f} Angstrom'.format(slab_diagonal))
 
     # Check if molecule fits on reference metal slab, if not scale the surface
-    tolerance = 10.0   # Angstrom
+    tolerance = 3.0   # Angstrom
     condition = slab_diagonal - tolerance > max_dist_molec
     if condition:
         print('Molecule fits on reference metal slab\n')
     else:
         print('Scaling reference metal slab...')
-        counter = 1
+        counter = 1.0
         while not condition:
-            counter += 1
+            counter += 1.0
             pymatgen_slab = AseAtomsAdaptor.get_structure(slab_ase_obj)
             pymatgen_slab.make_supercell([counter, counter, 1])
             slab_ase_obj = AseAtomsAdaptor.get_atoms(pymatgen_slab)
@@ -292,26 +269,21 @@ if __name__ == "__main__":
     if len(poscar_dict) == 0:
         print('No adsorption configurations found for the given molecule. Try to increase the adsorption height (default 2.5 Angstrom)')
         exit(0)
-    energy_ensemble, energy_molecule, adsorption_energy, poscar_list, counter_list = [], [], [], [], []
-    counter = 0
     print("Screening adsorption configurations ...")
 
+    # get molecule energy from GNN 
+    gas_graph = structure_to_graph(
+        list(poscar_dict.values())[0], model.g_tol, model.g_sf, model.g_metal_2nn)    
+    molecule_graph = extract_adsorbate(gas_graph)
+    energy_molecule = model.evaluate(molecule_graph)
+    best_eads = 1000.0
     for idx, poscar_path in enumerate(poscar_dict.values()):
         prc = int((idx+1)/len(poscar_dict.values())*TOT_ICN)
-        ensemble, molecule, adsorption, adsorption_bool = gnn_predict(poscar_path)
-        energy_ensemble.append(ensemble)
-        energy_molecule.append(molecule)
-        adsorption_energy.append(adsorption)
-        poscar_list.append(poscar_path)
-        counter += 1
-        counter_list.append(counter)
-
+        ensemble = gnn_predict(poscar_path)
+        if ensemble < best_eads:
+            best_poscar = poscar_path
+            best_ensemble = ensemble
         print(f"Progress: {PRG_FULL*prc}{PRG_EMT*(TOT_ICN-prc)} ({prc*100/TOT_ICN}%)", end="\r")
-
-    df = DataFrame({'counter': counter_list, 'poscar': poscar_list, 'ensemble': energy_ensemble,
-                          'molecule': energy_molecule, 'adsorption': adsorption_energy})
-    df = df[df['adsorption'] != None]
-    df.to_csv(os.path.join(tmp_subdir, 'prediction.csv'))
 
     # Delete temporary generated files by DockonSurf
     for root, dirs, files in os.walk(tmp_subdir):
@@ -330,17 +302,17 @@ if __name__ == "__main__":
     os.remove(os.path.join(tmp_subdir, 'POSCAR'))
 
     metal_surface = args.metal + '(' + args.surface_facet + ')'
-    ener_most_stable_conf = df['adsorption'].min()
-    ensemble_most_stable_conf = df[df['adsorption'] == df['adsorption'].min()]['ensemble'].values[0]
-    molecule_most_stable_conf = df[df['adsorption'] == df['adsorption'].min()]['molecule'].values[0]
-    most_stable_conf_path = df[df['adsorption'] == df['adsorption'].min()]['poscar'].values[0]
+    ener_most_stable_conf = best_ensemble - energy_molecule
+    ensemble_most_stable_conf = best_ensemble
+    molecule_most_stable_conf = energy_molecule
+    most_stable_conf_path = best_poscar
     system_title = iupac_name + ' on ' + metal_surface
     # Bottoming the POSCARs
     bottom_poscar(2, tmp_subdir)
     print('\n\nSystem: ', system_title) 
     print('Canonical SMILES: ', canonical_smiles)
     print('Metal surface: {}'.format(metal_surface))
-    print('Number of detected adsorption configurations: ', len(df))
+    print('Number of detected adsorption configurations: ', len(poscar_dict))
     print('Adsorption energy (most stable configuration): {:.2f} eV'.format(ener_most_stable_conf))
     print('Path to most stable configuration: ', most_stable_conf_path)
     
