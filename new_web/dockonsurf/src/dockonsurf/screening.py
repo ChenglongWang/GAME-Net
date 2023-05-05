@@ -801,6 +801,7 @@ def run_screening(inp_vars):
     logger.info(f'Generated {len(surf_ads_list)} adsorbate-surface atomic '
                 f'configurations to carry out a calculation of.')
 
-    run_calc('screening', inp_vars, surf_ads_list)
+    # run_calc('screening', inp_vars, surf_ads_list)
     logger.info('Finished the procedures for the screening of adsorbate-surface'
                 ' structures section.')
+    return surf_ads_list
