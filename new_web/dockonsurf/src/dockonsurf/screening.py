@@ -794,8 +794,8 @@ def run_screening(inp_vars):
     if len(surf_ads_list) > inp_vars['max_structures']:
         surf_ads_list = random.sample(surf_ads_list, inp_vars['max_structures'])
     elif len(surf_ads_list) == 0:
-        err_msg = "No configurations were generated: Check the parameters in" \
-                  "dockonsurf.inp"
+        err_msg = "No configurations were generated: Try with a different " \
+                    "combination of parameters."
         logger.error(err_msg)
         raise ValueError(err_msg)
     logger.info(f'Generated {len(surf_ads_list)} adsorbate-surface atomic '

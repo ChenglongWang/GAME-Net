@@ -279,10 +279,10 @@ def check_inp_files(inp_files, code: str, potcar_dir=None):
                 try:
                     eval(file_type.capitalize()).from_file(inp_file)
                 except ValueError:
-                    logger.error(err_msg)
+                    #logger.error(err_msg)
                     err = ValueError(err_msg)
                 except IndexError:
-                    logger.error(err_msg)
+                    #logger.error(err_msg)
                     err = IndexError(err_msg)
                 else:
                     if file_name == "INCAR":
