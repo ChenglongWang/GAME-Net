@@ -624,7 +624,7 @@ def get_graph_conversion_params(path: str) -> tuple:
     return voronoi_tol, scaling_factor, second_order_nn 
 
 
-def structure_to_graph(geometry_file: str,
+def structure_to_graph(contcar_file: str,
                        voronoi_tolerance: float,
                        scaling_factor: dict,
                        second_order: bool, 
@@ -641,7 +641,34 @@ def structure_to_graph(geometry_file: str,
     Returns:
         graph (torch_geometric.data.Data): PyG graph representing the system under study.
     """
-    atoms = read_vasp(geometry_file)
+    atoms = read_vasp(contcar_file)
+    nx_graph = atoms_to_graph(atoms, voronoi_tolerance, scaling_factor, second_order)
+    species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
+    edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]
+    edge_heads = [edge[1] for edge in nx_graph.edges] + [edge[0] for edge in nx_graph.edges]
+    elem_array = np.array(species_list).reshape(-1, 1)
+    elem_enc = one_hot_encoder.transform(elem_array).toarray()
+    edge_index = torch.tensor([edge_tails, edge_heads], dtype=torch.long)
+    x = torch.tensor(elem_enc, dtype=torch.float)
+    return Data(x=x, edge_index=edge_index)
+
+def atoms_to_pyggraph(atoms: Atoms,
+                       voronoi_tolerance: float,
+                       scaling_factor: dict,
+                       second_order: bool, 
+                       one_hot_encoder=ENCODER) -> Data:
+    """Create Pytorch Geometric graph from VASP chemical structure file (CONTCAR/POSCAR).
+
+    Args:
+        atoms (Atoms): ASE Atoms object.
+        voronoi_tolerance (float): Tolerance applied during the graph conversion.
+        scaling_factor (float): Scaling factor applied to metal radius of metals.
+        second_order (bool): whether 2nd-order metal atoms are included.
+        one_hot_encoder (optional): One-hot encoder. Defaults to ENCODER.
+
+    Returns:
+        graph (torch_geometric.data.Data): PyG graph representing the system under study.
+    """
     nx_graph = atoms_to_graph(atoms, voronoi_tolerance, scaling_factor, second_order)
     species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
     edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]

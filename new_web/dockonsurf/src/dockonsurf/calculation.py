@@ -209,14 +209,6 @@ def prep_vasp(inp_files, run_type, atms_list, proj_name, cell, potcar_dir):
         os.mkdir(subdir)
         for inp_file in inp_files:
             file_name = inp_file.split("/")[-1]
-            if "INCAR" in file_name:
-                incar.write_file(subdir+"INCAR")
-            elif "KPOINTS" in file_name and "KPOINTS" != file_name:
-                copy(inp_file, subdir+"KPOINTS")
-            elif "POTCAR" in file_name and "POTCAR" != file_name:
-                copy(inp_file, subdir+"POTCAR")
-            else:
-                copy(inp_file, subdir)
         if cell is not False and np.linalg.det(cell) != 0.0:
             conf.pbc = True
             conf.cell = cell
