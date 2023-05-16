@@ -168,7 +168,7 @@ def gen_dockonsurf_input(molecule: str,
     write(slab_poscar_file, slab_ase_obj, format='vasp')
 
     # Generate input files for DockonSurf
-    slab_active_sites = get_act_sites(slab_poscar_file)
+    slab_active_sites = get_act_sites(slab_poscar_file, surface_facet)
     slab_lattice = slab_ase_obj.get_cell().lengths()
     for active_site, site_idxs in slab_active_sites.items():
         if site_idxs != []:
@@ -259,8 +259,9 @@ if __name__ == "__main__":
     print('Number of detected adsorption configurations: ', len(total_config_list))
     print('Adsorption energy (most stable configuration): {:.2f} eV'.format(ener_most_stable_conf))
     # Saving the atomic structure of the most stable configuration
-    best_poscar.write(os.path.join(tmp_subdir, 'POSCAR'))
-    
+    res_poscar_path = os.path.join(tmp_subdir, 'POSCAR')
+    best_poscar.write(res_poscar_path)
+
     ads_graph = atoms_to_pyggraph(
         most_stable_conf_path, model.g_tol, model.g_sf, model.g_metal_2nn)
     plotter(ads_graph, dpi=300)

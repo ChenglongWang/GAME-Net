@@ -6,7 +6,7 @@ from pymatgen.analysis.adsorption import AdsorbateSiteFinder
 from gnn_eads.functions import get_voronoi_neighbourlist
 from pymatgen.io.ase import AseAtomsAdaptor
 
-def get_act_sites(metal_poscar: str) -> dict:
+def get_act_sites(metal_poscar: str, surface_facet: str) -> dict:
     # TODO: Refine this function to find the active sites of different metal facets
     """Finds the active sites of a metal surface. These can be ontop, bridge or hollow sites.
 
@@ -26,6 +26,14 @@ def get_act_sites(metal_poscar: str) -> dict:
     
     surf_sites = AdsorbateSiteFinder(surface, selective_dynamics=True)
     most_active_sites = surf_sites.find_adsorption_sites()
+    # TODO: Improve this part to find the active sites of the 110 facet
+    if surface_facet == '110':
+        # Getting only the first ontop site, 6 bridge sites and the first hollow sites
+        most_active_sites['ontop'] = most_active_sites['ontop'][:1]
+        most_active_sites['bridge'] = most_active_sites['bridge'][:9]
+        most_active_sites['hollow'] = most_active_sites['hollow'][:3]
+        # Updating the 'all' key
+        most_active_sites['all'] = most_active_sites['ontop'] + most_active_sites['bridge'] + most_active_sites['hollow']
     
     count = 0
     active_site_dict = {}
