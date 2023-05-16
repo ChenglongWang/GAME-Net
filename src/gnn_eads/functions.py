@@ -449,9 +449,9 @@ def scale_target(train_loader: DataLoader,
     # 1) Get target scaling coefficients from train and validation sets
     y_list = []
     for graph in train_loader.dataset:
-        y_list.append(graph.y.item())
+        y_list.append(graph.ener.item())
     for graph in val_loader.dataset:
-        y_list.append(graph.y.item())
+        y_list.append(graph.ener.item())
     y_tensor = torch.tensor(y_list)
     # Standardization
     mean_tv = y_tensor.mean(dim=0, keepdim=True)  
@@ -463,24 +463,24 @@ def scale_target(train_loader: DataLoader,
     # 2) Apply Scaling
     for graph in train_loader.dataset:
         if mode == "std":
-            graph.y = (graph.y - mean_tv) / std_tv
+            graph.y = (graph.ener - mean_tv) / std_tv
         elif mode == "norm":
-            graph.y = (graph.y - min_tv) / (max_tv - min_tv)
+            graph.y = (graph.ener - min_tv) / (max_tv - min_tv)
         else:
             pass
     for graph in val_loader.dataset:
         if mode == "std":
-            graph.y = (graph.y - mean_tv) / std_tv
+            graph.y = (graph.ener - mean_tv) / std_tv
         elif mode == "norm":
-            graph.y = (graph.y - min_tv) / (max_tv - min_tv)
+            graph.y = (graph.ener - min_tv) / (max_tv - min_tv)
         else:
             pass
     if test == True:
         for graph in test_loader.dataset:
             if mode == "std":
-                graph.y = (graph.y - mean_tv) / std_tv
+                graph.y = (graph.ener - mean_tv) / std_tv
             elif mode == "norm":
-                graph.y = (graph.y - min_tv) / (max_tv - min_tv)
+                graph.y = (graph.ener - min_tv) / (max_tv - min_tv)
             else:
                 pass
     if mode == "std":
@@ -770,7 +770,7 @@ def surf(metal:str) -> str:
     
 class EarlyStopper:
     """
-    Early stopper for training loop (unused).
+    Early stopper for training loop.
     Args:
         patience (int): number of epochs to wait before turning on the early stopper
         min_delta (float): minimum change in validation loss to be considered an improvement
