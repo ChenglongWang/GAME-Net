@@ -793,11 +793,11 @@ def run_screening(inp_vars):
     surf_ads_list = adsorb_confs(selected_confs, surf, inp_vars)
     if len(surf_ads_list) > inp_vars['max_structures']:
         surf_ads_list = random.sample(surf_ads_list, inp_vars['max_structures'])
-    elif len(surf_ads_list) == 0:
-        err_msg = "No configurations were generated: Try with a different " \
-                    "combination of parameters."
-        logger.error(err_msg)
-        raise ValueError(err_msg)
+    # elif len(surf_ads_list) == 0:
+    #     err_msg = "No configurations were generated: Try with a different " \
+    #                 "combination of parameters."
+    #     logger.error(err_msg)
+    #     raise ValueError(err_msg)
     logger.info(f'Generated {len(surf_ads_list)} adsorbate-surface atomic '
                 f'configurations to carry out a calculation of.')
 

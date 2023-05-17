@@ -30,8 +30,8 @@ def get_act_sites(metal_poscar: str, surface_facet: str) -> dict:
     if surface_facet == '110':
         # Getting only the first ontop site, 6 bridge sites and the first hollow sites
         most_active_sites['ontop'] = most_active_sites['ontop'][:1]
-        most_active_sites['bridge'] = most_active_sites['bridge'][:9]
-        most_active_sites['hollow'] = most_active_sites['hollow'][:3]
+        most_active_sites['bridge'] = most_active_sites['bridge'][:6]
+        most_active_sites['hollow'] = most_active_sites['hollow'][:1]
         # Updating the 'all' key
         most_active_sites['all'] = most_active_sites['ontop'] + most_active_sites['bridge'] + most_active_sites['hollow']
     
