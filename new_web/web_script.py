@@ -12,7 +12,7 @@ import ase
 from ase.io import read, write
 from ase.db import connect
 from matplotlib.pyplot import savefig
-from numpy import sqrt, max
+from numpy import sqrt, max, arange
 from numpy.linalg import norm
 from pubchempy import get_compounds, Compound
 from pymatgen.io.ase import AseAtomsAdaptor
@@ -67,7 +67,6 @@ def gen_dockonsurf_input(molecule: str,
                          surface_facet: str,
                          OUTPUT_DIR: str,
                          molecule_format: str = 'name',
-                         ads_height: float = 2.5,
                          ) -> tuple:
     """Collect the inputs for the generation of adsorption configurations.
 
@@ -170,26 +169,31 @@ def gen_dockonsurf_input(molecule: str,
     # Generate input files for DockonSurf
     slab_active_sites = get_act_sites(slab_poscar_file, surface_facet)
     slab_lattice = slab_ase_obj.get_cell().lengths()
-    for active_site, site_idxs in slab_active_sites.items():
-        if site_idxs != []:
-            gen_docksurf_file(tmp_subdir, 
-                              iupac_file_name, 
-                              molec_ase_obj, 
-                              connect_sites_molec, 
-                              slab_poscar_file, 
-                              slab_lattice, 
-                              active_site, 
-                              site_idxs, 
-                              ads_height)
+    for ads_height in arange(2.5, 4.5, 0.1):
+        for active_site, site_idxs in slab_active_sites.items():
+            if site_idxs != []:
+                gen_docksurf_file(tmp_subdir, 
+                                iupac_file_name, 
+                                molec_ase_obj, 
+                                connect_sites_molec, 
+                                slab_poscar_file, 
+                                slab_lattice, 
+                                active_site, 
+                                site_idxs, 
+                                ads_height)
     
-    # Run DockonSurf
-    total_config_list = []
-    for root, _, files in os.walk(tmp_subdir):
-        for file in files:
-            if file.endswith(".inp"):
-                file_path = os.path.join(root, file)
-                ads_list = dos.dockonsurf(os.path.abspath(file_path))
-                total_config_list.extend(ads_list)
+        # Run DockonSurf
+        total_config_list = []
+        for root, _, files in os.walk(tmp_subdir):
+            for file in files:
+                if file.endswith(".inp"):
+                    try:
+                        file_path = os.path.join(root, file)
+                        ads_list = dos.dockonsurf(os.path.abspath(file_path))
+                        total_config_list.extend(ads_list)
+                    except:
+                        continue
+        
     return tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj
 
 if __name__ == "__main__":
@@ -204,8 +208,6 @@ if __name__ == "__main__":
                         help='symbol of the metal (e.g. Au)')
     parser.add_argument('-sf', '--surface_facet', type=str, dest="surface_facet",
                         help='surface facet (e.g. 111)')
-    parser.add_argument('-ads_height', type=float, dest="ads_height", default=2.5,
-                        help='adsorption height used in DockonSurf to screen potential configurations')
     args = parser.parse_args()
 
     # Load GNN model on CPU
@@ -219,8 +221,7 @@ if __name__ == "__main__":
     tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj = gen_dockonsurf_input(args.id, 
                                                                     args.metal, 
                                                                     args.surface_facet, 
-                                                                    OUTPUT_DIR, 
-                                                                    ads_height = args.ads_height, 
+                                                                    OUTPUT_DIR,  
                                                                     molecule_format=args.id_format)
     print('Number of detected adsorption configurations: ', len(total_config_list))
 
@@ -230,7 +231,6 @@ if __name__ == "__main__":
     gas_graph = atoms_to_pyggraph(
         molec_ase_obj, model.g_tol, model.g_sf, model.g_metal_2nn)    
     energy_molecule = model.evaluate(gas_graph)
-
     best_eads = 1000.0
     for idx, ase_config_obj in enumerate(total_config_list):
         prc = int((idx+1)/len(total_config_list)*TOT_ICN)

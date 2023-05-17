@@ -78,24 +78,18 @@ def get_voronoi_neighbourlist(atoms: Atoms,
     pairs_corr = np.delete(pairs_corr, true_arr, axis=0)
     # Second condition for two atoms to be connected: Their distance must be smaller than the sum of their
     # covalent radii plus a tolerance.
-    dst_d = {}
     pairs_lst = []
     for pair in pairs_corr:
         distance = atoms.get_distance(pair[0], pair[1], mic=True)  # mic=True for periodic boundary conditions
-        elem_pair = (atoms[pair[0]].symbol, atoms[pair[1]].symbol)
-        fr_elements = frozenset(elem_pair)
-        if elem_pair not in dst_d:
-            dst_d[fr_elements] = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance
-            if atoms[pair[0]].symbol in METALS: 
-                dst_d[fr_elements] += (scaling_factor - 1.0) * CORDERO[atoms[pair[0]].symbol]
-            if atoms[pair[1]].symbol in METALS: 
-                dst_d[fr_elements] += (scaling_factor - 1.0) * CORDERO[atoms[pair[1]].symbol]
-        if distance <= dst_d[fr_elements]:
+        threshold = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance
+        if atoms[pair[0]].symbol in METALS: 
+            threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[0]].symbol]
+        if atoms[pair[1]].symbol in METALS: 
+            threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[1]].symbol]
+        if distance <= threshold:
             pairs_lst.append(pair)
-    if len(pairs_lst) == 0:
-        return np.array([])
-    else:
-        return np.sort(np.array(pairs_lst), axis=1)
+
+    return np.sort(np.array(pairs_lst), axis=1)
 
 
 def atoms_to_graph(atoms: Atoms, 
