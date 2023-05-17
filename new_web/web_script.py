@@ -248,6 +248,9 @@ if __name__ == "__main__":
                 os.remove(os.path.join(root, file))
     os.remove(os.path.join(tmp_subdir, 'POSCAR'))
 
+    # Transforming the cartesian coordinates of the most stable configuration to direct coordinates
+    best_poscar.set_scaled_positions(best_poscar.get_scaled_positions())
+
     metal_surface = args.metal + '(' + args.surface_facet + ')'
     ener_most_stable_conf = best_ensemble - energy_molecule
     ensemble_most_stable_conf = best_ensemble
@@ -257,7 +260,7 @@ if __name__ == "__main__":
     print('\n\nSystem: ', system_title) 
     print('Canonical SMILES: ', canonical_smiles)
     print('Metal surface: {}'.format(metal_surface))
-    print('Number of detected adsorption configurations: ', len(total_config_list))
+    print('Number of evaluated adsorption configurations: ', len(total_config_list))
     print('Adsorption energy (most stable configuration): {:.2f} eV'.format(ener_most_stable_conf))
     # Saving the atomic structure of the most stable configuration
     res_poscar_path = os.path.join(tmp_subdir, 'POSCAR')
