@@ -1,5 +1,6 @@
 """Module containing the Graph Neural Network classes."""
 import os.path as osp
+from os import listdir
 
 import torch
 from torch.nn import Linear
@@ -126,17 +127,16 @@ class PreTrainedModel():
             return self.model(graph).item() * self.std + self.mean
         
 class EnsembleModel():
-    def __init__(self, model_paths: list[str], k: int):
+    def __init__(self, model_path: str):
         """Container class for loading multiple pre-trained GNN models on the cpu."""
-        self.models = [PreTrainedModel(model_path) for model_path in model_paths]
-        self.k = k
-        self.mean, self.std = get_mean_std_from_model(model_paths[0])
-        # Graph conversion parameters
-        self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(model_paths[0])
+        paths = [osp.join(model_path, model) for model in listdir(model_path)]
+        self.num_ensembles = len(paths)
+        self.models = [PreTrainedModel(path) for path in paths]
+        self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(paths[0])
     
 
     def __repr__(self) -> str:
-        string = "Ensemble of {} pretrained graph neural networks for DFT ground state energy prediction.".format(self.k)
+        string = "Ensemble of {} pretrained graph neural networks for DFT ground state energy prediction.".format(self.num_ensembles)
         string += "\nModel paths: {}".format([osp.abspath(model.model_path) for model in self.models])
         string += "\nNumber of parameters: {}".format(sum([model.num_parameters for model in self.models]))
         string += "\nModel size: {:.2f} MB".format(sum([model.size_all_mb for model in self.models]))
@@ -152,11 +152,11 @@ class EnsembleModel():
             float: system energy in eV
         """
         with torch.no_grad():
-            preds = [model.model(graph).item() * model.std + model.mean for model in self.models]
+            preds = [model.evaluate(graph) for model in self.models]
             # Get normal distribution of predictions
-            mean = sum(preds) / self.k
-            std = sum([(pred - mean)**2 for pred in preds]) / self.k
-            return (mean, std)
+            mean = sum(preds) / self.num_ensembles
+            std = sum([(pred - mean)**2 for pred in preds]) / self.num_ensembles
+            return mean, std
         
     def get_adsorption_energy(self, graph: Data) -> float:
         """Evaluate adsorption energy
@@ -168,15 +168,13 @@ class EnsembleModel():
             float: adsorption energy in eV, as well as its standard deviation
 
         Notes:
-            The adsorption energy is computed as the difference between the energy of the adsorbate and the energy of the isolated molecule.
+            The adsorption energy is computed as the difference between the energy of the adsorbate and the molecule energy.
             The molecule energy is predicted by the GNN.
         """
         with torch.no_grad():
             adsorption_energy = self.evaluate(graph)
             molecule_graph = extract_adsorbate(graph)
             molecule_energy = self.evaluate(molecule_graph)
-            mean_ads, std_ads = torch.mean(adsorption_energy), torch.std(adsorption_energy)
-            mean_mol, std_mol = torch.mean(molecule_energy), torch.std(molecule_energy)
-            mean_adsorption_energy = mean_ads - mean_mol
-            std_adsorption_energy = torch.sqrt(std_ads**2 + std_mol**2)
+            mean_adsorption_energy = adsorption_energy[0] - molecule_energy[0]
+            std_adsorption_energy = (adsorption_energy[1]**2 + molecule_energy[1]**2)**0.5
             return mean_adsorption_energy, std_adsorption_energy
