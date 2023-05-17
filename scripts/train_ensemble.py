@@ -1,7 +1,8 @@
 """Perform GNN ensemble model training."""
 
 import argparse
-from os.path import exists, isdir, join
+from os.path import exists, isdir
+from os import mkdir
 from copy import deepcopy
 import time
 import sys
@@ -10,10 +11,7 @@ import random
 
 import torch 
 import toml
-import matplotlib.pyplot as plt
 from torch_geometric.loader import DataLoader
-from torch.utils.data import random_split, Dataset, Subset
-import torchvision.transforms as transforms
 
 from gnn_eads.functions import create_loaders, scale_target, train_loop, test_loop, get_id
 from gnn_eads.nets import FlexibleNet
@@ -22,15 +20,12 @@ from gnn_eads.create_graph_datasets import create_graph_datasets
 from gnn_eads.constants import FG_RAW_GROUPS, loss_dict, pool_seq_dict, conv_layer, sigma_dict, pool_dict
 from gnn_eads.paths import create_paths
 from gnn_eads.processed_datasets import create_post_processed_datasets
-from gnn_eads.plot_functions import error_dist_test_gif
 
 
 if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(description="Perform a training process with the provided hyperparameter settings.")
     PARSER.add_argument("-i", "--input", type=str, dest="i", 
-                        help="Input toml file with hyperparameters for the learning process.")
-    PARSER.add_argument("-k", type=str, dest="k",
-                        help="Number of ensemble models.")
+                        help="Input toml file with hyperparameters for the ensemble learning process.")
     PARSER.add_argument("-o", "--output", type=str, dest="o", 
                         help="Output directory for the results.")
     ARGS = PARSER.parse_args()
@@ -77,25 +72,24 @@ if __name__ == "__main__":
                                                            batch_size=train["batch_size"],
                                                            split=train["splits"], 
                                                            test=train["test_set"])
-    subset_size = len(train_big.dataset) // int(ARGS.k)
-    sizes = [subset_size] * int(ARGS.k)
-    remainder = len(train_big) % int(ARGS.k)
+    subset_size = len(train_big.dataset) // train["num_ensembles"]
+    sizes = [subset_size] * train["num_ensembles"]
+    remainder = len(train_big) % train["num_ensembles"]
     for i in range(remainder):
         sizes[i] += 1
     train_list = deepcopy(train_big.dataset)
-    # Shuffle the elements in the python list of graphs
-    random.shuffle(train_list)
+    random.shuffle(train_list)  # Shuffle the dataset before splitting it into subsets
     train_datasets, train_loaders = [], []
-    for ensemble in range(int(ARGS.k)):
+    for ensemble in range(train["num_ensembles"]):
         train_datasets.append(train_list[ensemble*subset_size:ensemble*subset_size+sizes[ensemble]])
-    for ensemble in range(int(ARGS.k)):
-        print(train_datasets[ensemble])
+    for ensemble in range(train["num_ensembles"]):
         train_loaders.append(DataLoader(train_datasets[ensemble], 
                                         batch_size=train["batch_size"],
                                         shuffle=True))
     t0 = time.time()
+    mkdir("{}/{}".format(output_directory, output_name))
     # Outer loop for k-ensembles
-    for ensemble in range(int(ARGS.k)):
+    for ensemble in range(train["num_ensembles"]):
         # Apply target scaling (standardization) 
         train_loader = train_loaders[ensemble]
         train_loader, val_loader, test_loader, mean, std = scale_target(train_loader,
@@ -154,8 +148,8 @@ if __name__ == "__main__":
         training_time = (time.time() - t0)/60  
         print("Training time: {:.2f} min".format(training_time))
         device_dict["training_time"] = training_time
-        create_model_report(output_name+ "_{}".format(ensemble+1),
-                            output_directory,
+        create_model_report("ensemble_{}".format(ensemble+1),
+                            output_directory + "/" + output_name,
                             HYPERPARAMS,  
                             model, 
                             (train_loader, val_loader, test_loader),
