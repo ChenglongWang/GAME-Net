@@ -170,6 +170,7 @@ def gen_dockonsurf_input(molecule: str,
     slab_active_sites = get_act_sites(slab_poscar_file, surface_facet)
     slab_lattice = slab_ase_obj.get_cell().lengths()
     for ads_height in arange(2.5, 4.5, 0.1):
+        ads_height = '{:.2f}'.format(ads_height)
         for active_site, site_idxs in slab_active_sites.items():
             if site_idxs != []:
                 gen_docksurf_file(tmp_subdir, 
@@ -193,8 +194,8 @@ def gen_dockonsurf_input(molecule: str,
                         total_config_list.extend(ads_list)
                     except:
                         continue
-        
-    return tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj
+        if total_config_list != []:
+            return tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj
 
 if __name__ == "__main__":
     t0 = time.time()
