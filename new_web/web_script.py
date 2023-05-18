@@ -248,9 +248,6 @@ if __name__ == "__main__":
                 os.remove(os.path.join(root, file))
     os.remove(os.path.join(tmp_subdir, 'POSCAR'))
 
-    # Transforming the cartesian coordinates of the most stable configuration to direct coordinates
-    best_poscar.set_scaled_positions(best_poscar.get_scaled_positions())
-
     metal_surface = args.metal + '(' + args.surface_facet + ')'
     ener_most_stable_conf = best_ensemble - energy_molecule
     ensemble_most_stable_conf = best_ensemble
