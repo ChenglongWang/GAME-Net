@@ -194,7 +194,7 @@ def gen_dockonsurf_input(molecule: str,
                         total_config_list.extend(ads_list)
                     except:
                         continue
-        if total_config_list != []:
+        if len(total_config_list) > 5:
             return tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj
 
 if __name__ == "__main__":
