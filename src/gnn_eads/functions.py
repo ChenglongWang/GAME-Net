@@ -38,122 +38,189 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
         return int((1 - 1/splits) * 100), math.ceil(100 / splits)
 
 
-def get_voronoi_neighbourlist(atoms: Atoms, 
-                              tolerance: float, 
-                              scaling_factor: float) -> np.ndarray:
-    """Get connectivity list from Voronoi analysis, considering periodic boundary conditions.
-    To have two atoms connected, these must satisfy two conditions:
-    1. They must share a Voronoi facet
-    2. The distance between them must be less than the sum of their covalent radii (plus a tolerance)
+# def get_voronoi_neighbourlist(atoms: Atoms, 
+#                               tolerance: float, 
+#                               scaling_factor: float) -> np.ndarray:
+#     """Get connectivity list from Voronoi analysis, considering periodic boundary conditions.
+#     To have two atoms connected, these must satisfy two conditions:
+#     1. They must share a Voronoi facet
+#     2. The distance between them must be less than the sum of their covalent radii (plus a tolerance)
 
-    Args:
-        atoms (Atoms): ase Atoms object.
-        tolerance (float): Tolerance for second condition.
-        scaling_factor (float): Scaling factor for covalent radii of metal atoms.
+#     Args:
+#         atoms (Atoms): ase Atoms object.
+#         tolerance (float): Tolerance for second condition.
+#         scaling_factor (float): Scaling factor for covalent radii of metal atoms.
 
-    Returns:
-        np.ndarray: N_edges x 2 array with the connectivity list. 
+#     Returns:
+#         np.ndarray: N_edges x 2 array with the connectivity list. 
 
-    Notes:
-        The array contains all the edges just in one direction! 
-    """
+#     Notes:
+#         The array contains all the edges just in one direction! 
+#     """
+#     # First condition to have two atoms connected: They must share a Voronoi facet
+#     coords_arr = np.copy(atoms.get_scaled_positions())  
+#     coords_arr = np.expand_dims(coords_arr, axis=0)
+#     coords_arr = np.repeat(coords_arr, 27, axis=0)
+#     mirrors = [-1, 0, 1]
+#     mirrors = np.asarray(list(product(mirrors, repeat=3)))
+#     mirrors = np.expand_dims(mirrors, 1)
+#     mirrors = np.repeat(mirrors, coords_arr.shape[1], axis=1)
+#     corrected_coords = np.reshape(coords_arr + mirrors,
+#                                   (coords_arr.shape[0] * coords_arr.shape[1],
+#                                    coords_arr.shape[2]))
+#     corrected_coords = np.dot(corrected_coords, atoms.get_cell())
+#     translator = np.tile(np.arange(coords_arr.shape[1]), coords_arr.shape[0])
+#     vor_bonds = Voronoi(corrected_coords)
+#     pairs_corr = translator[vor_bonds.ridge_points]
+#     pairs_corr = np.unique(np.sort(pairs_corr, axis=1), axis=0)
+#     true_arr = pairs_corr[:, 0] == pairs_corr[:, 1]
+#     true_arr = np.argwhere(true_arr)
+#     pairs_corr = np.delete(pairs_corr, true_arr, axis=0)
+#     # Second condition for two atoms to be connected: Their distance must be smaller than the sum of their
+#     # covalent radii plus a tolerance.
+#     pairs_lst = []
+#     for pair in pairs_corr:
+#         distance = atoms.get_distance(pair[0], pair[1], mic=True)  # mic=True for periodic boundary conditions
+#         threshold = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance
+#         if atoms[pair[0]].symbol in METALS: 
+#             threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[0]].symbol]
+#         if atoms[pair[1]].symbol in METALS: 
+#             threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[1]].symbol]
+#         if distance <= threshold:
+#             pairs_lst.append(pair)
+
+#     return np.sort(np.array(pairs_lst), axis=1)
+
+def get_voronoi_neighbourlist(atoms: Atoms, tolerance: float, scaling_factor: float) -> np.ndarray:
+    """Get connectivity list from Voronoi analysis, considering periodic boundary conditions."""
+    
     # First condition to have two atoms connected: They must share a Voronoi facet
-    coords_arr = np.copy(atoms.get_scaled_positions())  
-    coords_arr = np.expand_dims(coords_arr, axis=0)
-    coords_arr = np.repeat(coords_arr, 27, axis=0)
-    mirrors = [-1, 0, 1]
-    mirrors = np.asarray(list(product(mirrors, repeat=3)))
-    mirrors = np.expand_dims(mirrors, 1)
-    mirrors = np.repeat(mirrors, coords_arr.shape[1], axis=1)
-    corrected_coords = np.reshape(coords_arr + mirrors,
-                                  (coords_arr.shape[0] * coords_arr.shape[1],
-                                   coords_arr.shape[2]))
+    coords_arr = np.repeat(np.expand_dims(np.copy(atoms.get_scaled_positions()), axis=0), 27, axis=0)
+    mirrors = np.repeat(np.expand_dims(np.asarray(list(product([-1, 0, 1], repeat=3))), 1), coords_arr.shape[1], axis=1)
+    corrected_coords = np.reshape(coords_arr + mirrors, (coords_arr.shape[0] * coords_arr.shape[1], coords_arr.shape[2]))
     corrected_coords = np.dot(corrected_coords, atoms.get_cell())
     translator = np.tile(np.arange(coords_arr.shape[1]), coords_arr.shape[0])
     vor_bonds = Voronoi(corrected_coords)
     pairs_corr = translator[vor_bonds.ridge_points]
     pairs_corr = np.unique(np.sort(pairs_corr, axis=1), axis=0)
-    true_arr = pairs_corr[:, 0] == pairs_corr[:, 1]
-    true_arr = np.argwhere(true_arr)
-    pairs_corr = np.delete(pairs_corr, true_arr, axis=0)
-    # Second condition for two atoms to be connected: Their distance must be smaller than the sum of their
-    # covalent radii plus a tolerance.
+    pairs_corr = np.delete(pairs_corr, np.argwhere(pairs_corr[:, 0] == pairs_corr[:, 1]), axis=0)
+
+    # Second condition for two atoms to be connected: Their distance must be smaller than the sum of their covalent radii plus a tolerance.
     pairs_lst = []
     for pair in pairs_corr:
-        distance = atoms.get_distance(pair[0], pair[1], mic=True)  # mic=True for periodic boundary conditions
-        threshold = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance
-        if atoms[pair[0]].symbol in METALS: 
-            threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[0]].symbol]
-        if atoms[pair[1]].symbol in METALS: 
-            threshold += (scaling_factor - 1.0) * CORDERO[atoms[pair[1]].symbol]
+        distance = atoms.get_distance(pair[0], pair[1], mic=True)
+        threshold = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance + \
+                    (scaling_factor - 1.0) * ((atoms[pair[0]].symbol in METALS) * CORDERO[atoms[pair[0]].symbol] + \
+                                              (atoms[pair[1]].symbol in METALS) * CORDERO[atoms[pair[1]].symbol])
         if distance <= threshold:
             pairs_lst.append(pair)
 
     return np.sort(np.array(pairs_lst), axis=1)
 
 
-def atoms_to_graph(atoms: Atoms, 
-                   voronoi_tolerance: float,
-                   scaling_factor: float,
-                   second_order: bool) -> Graph:
+# def atoms_to_graph(atoms: Atoms, 
+#                    voronoi_tolerance: float,
+#                    scaling_factor: float,
+#                    second_order: bool) -> Graph:
+#     """
+#     Convert ase Atoms object to NetworkX graph, representing the adsorbate-metal system.
+
+#     Args: 
+#         atoms (ase.Atoms): ase Atoms object.
+#         voronoi_tolerance (float): Tolerance of the tessellation algorithm for edge creation.
+#         second_order (bool): Whether to include the 2-hop metal atoms neighbours.
+#         scaling_factor (float): Scaling factor applied to metal atomic radii from Cordero et al.
+#     Returns:
+#         nx_graph (nx.Graph): NetworkX graph object representing the adsorbate-metal system.
+#     """
+#     # 1) Get connectivity list for the whole system (adsorbate + metal slab)
+#     adsorbate_indexes = {atom.index for atom in atoms if atom.symbol not in METALS}
+#     metal_neighbours = set()
+#     neighbour_list = get_voronoi_neighbourlist(atoms, voronoi_tolerance, scaling_factor)
+#     if len(neighbour_list) == 0:
+#         return Atoms()
+#     # 2) Get metal neighbours
+#     for pair in neighbour_list:  # first order neighbours
+#         if (pair[0] in adsorbate_indexes) and (atoms[pair[1]].symbol in METALS):  # adsorbate-metal
+#             metal_neighbours.add(pair[1])
+#         elif (pair[1] in adsorbate_indexes) and (atoms[pair[0]].symbol in METALS):  # metal-adsorbate
+#             metal_neighbours.add(pair[0])
+#         else:  # adsorbate-adsorbate and metal-metal
+#             continue
+#     if second_order:  # second order neighbours
+#         nl = []
+#         for metal_atom_index in metal_neighbours:
+#             # append to nl the index of neighbours of the metal atom
+#             for pair in neighbour_list:
+#                 if (pair[0] == metal_atom_index) and (atoms[pair[1]].symbol in METALS):
+#                     nl.append(pair[1])
+#                 elif (pair[1] == metal_atom_index) and (atoms[pair[0]].symbol in METALS):
+#                     nl.append(pair[0])
+#                 else:
+#                     continue
+
+#         for index in nl:
+#             metal_neighbours.add(index)        
+#     # 3) Construct graph with the atoms in the ensemble
+#     ensemble =  Atoms(atoms[[*adsorbate_indexes, *metal_neighbours]], pbc=atoms.pbc, cell=atoms.cell)
+#     nx_graph = Graph()
+#     nx_graph.add_nodes_from(range(len(ensemble)))
+#     set_node_attributes(nx_graph, {i: ensemble[i].symbol for i in range(len(ensemble))}, "element")
+#     ensemble_neighbour_list = get_voronoi_neighbourlist(ensemble, voronoi_tolerance, scaling_factor)
+#     ensemble_neighbour_list = np.concatenate((ensemble_neighbour_list, ensemble_neighbour_list[:, [1, 0]]))
+#     if not second_order:  # If not second order, remove connections between metal atoms
+#         ll = []
+#         for pair in ensemble_neighbour_list:
+#             if (ensemble[pair[0]].symbol in METALS) and (ensemble[pair[1]].symbol in METALS):
+#                 continue
+#             else:
+#                 ll.append(pair)
+#         nx_graph.add_edges_from(ll)
+#     else:
+#         nx_graph.add_edges_from(ensemble_neighbour_list)
+#     return nx_graph
+
+def atoms_to_graph(atoms: Atoms, voronoi_tolerance: float, scaling_factor: float, second_order: bool) -> Graph:
     """
     Convert ase Atoms object to NetworkX graph, representing the adsorbate-metal system.
-
-    Args: 
-        atoms (ase.Atoms): ase Atoms object.
-        voronoi_tolerance (float): Tolerance of the tessellation algorithm for edge creation.
-        second_order (bool): Whether to include the 2-hop metal atoms neighbours.
-        scaling_factor (float): Scaling factor applied to metal atomic radii from Cordero et al.
-    Returns:
-        nx_graph (nx.Graph): NetworkX graph object representing the adsorbate-metal system.
     """
     # 1) Get connectivity list for the whole system (adsorbate + metal slab)
     adsorbate_indexes = {atom.index for atom in atoms if atom.symbol not in METALS}
-    metal_neighbours = set()
     neighbour_list = get_voronoi_neighbourlist(atoms, voronoi_tolerance, scaling_factor)
     if len(neighbour_list) == 0:
         return Atoms()
-    # 2) Get metal neighbours
-    for pair in neighbour_list:  # first order neighbours
-        if (pair[0] in adsorbate_indexes) and (atoms[pair[1]].symbol in METALS):  # adsorbate-metal
-            metal_neighbours.add(pair[1])
-        elif (pair[1] in adsorbate_indexes) and (atoms[pair[0]].symbol in METALS):  # metal-adsorbate
-            metal_neighbours.add(pair[0])
-        else:  # adsorbate-adsorbate and metal-metal
-            continue
-    if second_order:  # second order neighbours
-        nl = []
-        for metal_atom_index in metal_neighbours:
-            # append to nl the index of neighbours of the metal atom
-            for pair in neighbour_list:
-                if (pair[0] == metal_atom_index) and (atoms[pair[1]].symbol in METALS):
-                    nl.append(pair[1])
-                elif (pair[1] == metal_atom_index) and (atoms[pair[0]].symbol in METALS):
-                    nl.append(pair[0])
-                else:
-                    continue
 
-        for index in nl:
-            metal_neighbours.add(index)        
+    # 2) Get metal neighbours
+    metal_neighbours = {
+        pair[1] if pair[0] in adsorbate_indexes else pair[0] 
+        for pair in neighbour_list 
+        if (pair[0] in adsorbate_indexes and atoms[pair[1]].symbol in METALS) or 
+           (pair[1] in adsorbate_indexes and atoms[pair[0]].symbol in METALS)
+    }
+
+    if second_order:  # second order neighbours
+        nl = [
+            pair[1] if pair[0] == metal_atom_index else pair[0]
+            for metal_atom_index in metal_neighbours
+            for pair in neighbour_list
+            if (pair[0] == metal_atom_index and atoms[pair[1]].symbol in METALS) or 
+               (pair[1] == metal_atom_index and atoms[pair[0]].symbol in METALS)
+        ]
+        metal_neighbours.update(nl)
+        
     # 3) Construct graph with the atoms in the ensemble
-    ensemble =  Atoms(atoms[[*adsorbate_indexes, *metal_neighbours]], pbc=atoms.pbc, cell=atoms.cell)
+    ensemble = Atoms(atoms[list(adsorbate_indexes) + list(metal_neighbours)], pbc=atoms.pbc, cell=atoms.cell)
     nx_graph = Graph()
     nx_graph.add_nodes_from(range(len(ensemble)))
     set_node_attributes(nx_graph, {i: ensemble[i].symbol for i in range(len(ensemble))}, "element")
     ensemble_neighbour_list = get_voronoi_neighbourlist(ensemble, voronoi_tolerance, scaling_factor)
     ensemble_neighbour_list = np.concatenate((ensemble_neighbour_list, ensemble_neighbour_list[:, [1, 0]]))
-    if not second_order:  # If not second order, remove connections between metal atoms
-        ll = []
-        for pair in ensemble_neighbour_list:
-            if (ensemble[pair[0]].symbol in METALS) and (ensemble[pair[1]].symbol in METALS):
-                continue
-            else:
-                ll.append(pair)
-        nx_graph.add_edges_from(ll)
-    else:
-        nx_graph.add_edges_from(ensemble_neighbour_list)
-    return nx_graph
 
+    if not second_order:  # If not second order, remove connections between metal atoms
+        ensemble_neighbour_list = [pair for pair in ensemble_neighbour_list if not (ensemble[pair[0]].symbol in METALS and ensemble[pair[1]].symbol in METALS)]
+        
+    nx_graph.add_edges_from(ensemble_neighbour_list)
+    return nx_graph
 
 def get_energy(dataset: str, paths_dict:dict) -> dict:
     """
@@ -664,13 +731,25 @@ def atoms_to_pyggraph(atoms: Atoms,
         graph (torch_geometric.data.Data): PyG graph representing the system under study.
     """
     nx_graph = atoms_to_graph(atoms, voronoi_tolerance, scaling_factor, second_order)
-    species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
-    edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]
-    edge_heads = [edge[1] for edge in nx_graph.edges] + [edge[0] for edge in nx_graph.edges]
-    elem_array = np.array(species_list).reshape(-1, 1)
+    # species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
+    # edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]
+    # edge_heads = [edge[1] for edge in nx_graph.edges] + [edge[0] for edge in nx_graph.edges]
+    # elem_array = np.array(species_list).reshape(-1, 1)
+    # elem_enc = one_hot_encoder.transform(elem_array).toarray()
+    # edge_index = torch.tensor([edge_tails, edge_heads], dtype=torch.long)
+    # x = torch.tensor(elem_enc, dtype=torch.float)
+
+    species_list = (nx_graph.nodes[node]['element'] for node in nx_graph.nodes)
+
+    edge_tails_heads = [(edge[0], edge[1]) for edge in nx_graph.edges]
+    edge_tails = [x for x, y in edge_tails_heads] + [y for x, y in edge_tails_heads]
+    edge_heads = [y for x, y in edge_tails_heads] + [x for x, y in edge_tails_heads]
+
+    elem_array = np.array(list(species_list)).reshape(-1, 1)
     elem_enc = one_hot_encoder.transform(elem_array).toarray()
+
     edge_index = torch.tensor([edge_tails, edge_heads], dtype=torch.long)
-    x = torch.tensor(elem_enc, dtype=torch.float)
+    x = torch.from_numpy(elem_enc).float()
     return Data(x=x, edge_index=edge_index)
 
 

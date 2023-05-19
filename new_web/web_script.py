@@ -4,18 +4,23 @@ import argparse
 import os
 import sys
 import time
+from multiprocessing import Pool
+import resource
 sys.path.insert(0, "../src")
 sys.path.insert(0, "./adsurf")
 
 import dockonsurf.dockonsurf as dos
 import ase
-from ase.io import read, write
+from ase.constraints import FixAtoms
 from ase.db import connect
+from ase.io import read, write
 from matplotlib.pyplot import savefig
 from numpy import sqrt, max, arange
 from numpy.linalg import norm
 from pubchempy import get_compounds, Compound
 from pymatgen.io.ase import AseAtomsAdaptor
+from torch_geometric.loader import DataLoader
+import numpy as np
 
 from adsurf.functions.act_sites import get_act_sites
 from adsurf.functions.adsurf_fn import connectivity_analysis, gen_docksurf_file
@@ -45,27 +50,30 @@ metal_structure_dict = {
     "Zn": "hcp"
 }
 
-def gnn_predict(atoms_obj: ase.Atoms) -> tuple:
-    """This function will return the proxy adsorption energy of the molecule on the metal surface.
-    Parameters
-    ----------
-    atoms_obj : ase.Atoms
-        ASE object of the molecule on the metal surface.
-    Returns
-    -------
-    tuple
-        Proxy adsorption energy of the molecule on the metal surface.
-    """
+# def gnn_predict(atoms_obj: ase.Atoms) -> tuple:
+#     """This function will return the proxy adsorption energy of the molecule on the metal surface.
+#     Parameters
+#     ----------
+#     atoms_obj : ase.Atoms
+#         ASE object of the molecule on the metal surface.
+#     Returns
+#     -------
+#     tuple
+#         Proxy adsorption energy of the molecule on the metal surface.
+#     """
 
-    ads_graph = atoms_to_pyggraph(
-        atoms_obj, model.g_tol, model.g_sf, model.g_metal_2nn)    
-    return model.evaluate(ads_graph)
+#     ads_graph = atoms_to_pyggraph(
+#         atoms_obj, model.g_tol, model.g_sf, model.g_metal_2nn)    
+#     return model.evaluate(ads_graph)
 
+def wrap_atoms_to_pyggraph(args):
+    return atoms_to_pyggraph(*args)
 
 def gen_dockonsurf_input(molecule: str,
                          metal: str,
                          surface_facet: str,
                          OUTPUT_DIR: str,
+                         model: PreTrainedModel,
                          molecule_format: str = 'name',
                          ) -> tuple:
     """Collect the inputs for the generation of adsorption configurations.
@@ -169,7 +177,9 @@ def gen_dockonsurf_input(molecule: str,
     # Generate input files for DockonSurf
     slab_active_sites = get_act_sites(slab_poscar_file, surface_facet)
     slab_lattice = slab_ase_obj.get_cell().lengths()
-    for ads_height in arange(2.5, 4.5, 0.1):
+    total_config_list = []
+    t00 = time.time()
+    for ads_height in arange(2.5, 4.0, 0.15):
         ads_height = '{:.2f}'.format(ads_height)
         for active_site, site_idxs in slab_active_sites.items():
             if site_idxs != []:
@@ -184,7 +194,6 @@ def gen_dockonsurf_input(molecule: str,
                                 ads_height)
     
         # Run DockonSurf
-        total_config_list = []
         for root, _, files in os.walk(tmp_subdir):
             for file in files:
                 if file.endswith(".inp"):
@@ -194,8 +203,54 @@ def gen_dockonsurf_input(molecule: str,
                         total_config_list.extend(ads_list)
                     except:
                         continue
-        if len(total_config_list) > 5:
-            return tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj
+    print('DockonSurf run time: {:.2f} s'.format(time.time()-t00))
+    print('Number of detected adsorption configurations: ', len(total_config_list))
+
+    t_000 = time.time()
+    # Removing the metal atoms with selective dynamics == False
+    fixed_atms_idxs = slab_ase_obj.todict().get('constraints', None)[0].get_indices()
+    fixed_atms = slab_ase_obj[np.isin(range(len(slab_ase_obj)), fixed_atms_idxs)]
+    for idx, atoms_obj in enumerate(total_config_list):
+        # Removing the atoms which indices are in fixed_atms
+        atoms_obj = atoms_obj[~np.isin(range(len(atoms_obj)), fixed_atms_idxs)]
+        total_config_list[idx] = atoms_obj
+
+
+    rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
+
+    args_list = [(atoms_obj, model.g_tol, model.g_sf, model.g_metal_2nn) for atoms_obj in total_config_list]
+    with Pool() as pool:
+        ads_graph_list = pool.map(wrap_atoms_to_pyggraph, args_list)
+    
+    # Setting back the default limit
+    resource.setrlimit(resource.RLIMIT_NOFILE, rlimit)
+    rlimit = resource.getrlimit(resource.RLIMIT_NOFILE)
+
+    # ads_graph_list = [atoms_to_pyggraph(atoms_obj, model.g_tol, model.g_sf, model.g_metal_2nn) for atoms_obj in total_config_list]    
+    loader = DataLoader(ads_graph_list, batch_size=len(ads_graph_list), shuffle=False)
+    print('Time to convert adsorption configurations to graphs: {:.2f} s'.format(time.time()-t_000))
+    # Get molecule energy from GNN
+    gas_graph = atoms_to_pyggraph(
+        molec_ase_obj, model.g_tol, model.g_sf, model.g_metal_2nn)    
+    energy_molecule = model.evaluate(gas_graph)
+    t_00 = time.time()
+    for batch in loader:
+        energy_list = model.model(batch)* model.std + model.mean
+    print('Time to evaluate adsorption configurations: {:.2f} s'.format(time.time()-t_00))
+    best_poscar = total_config_list[energy_list.argmin().item()]
+
+    best_poscar.extend(fixed_atms)
+    last_idxs_best_poscar = len(best_poscar) - len(fixed_atms)
+    
+    last_idxs_list = list(range(last_idxs_best_poscar, len(best_poscar)))
+    fixed_atms_constr = FixAtoms(indices=last_idxs_list)
+    best_poscar.set_constraint(fixed_atms_constr)
+
+    best_ensemble = energy_list.min().item()
+    eads_most_stable_conf = best_ensemble - energy_molecule
+
+    return tmp_subdir, iupac_name, canonical_smiles, total_config_list, best_poscar, best_ensemble, eads_most_stable_conf
 
 if __name__ == "__main__":
     t0 = time.time()
@@ -219,28 +274,15 @@ if __name__ == "__main__":
 
     OUTPUT_DIR = './results'
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    tmp_subdir, iupac_name, canonical_smiles, total_config_list, molec_ase_obj = gen_dockonsurf_input(args.id, 
+    tmp_subdir, iupac_name, canonical_smiles, total_config_list, best_poscar, best_ensemble, ener_most_stable_conf = gen_dockonsurf_input(args.id, 
                                                                     args.metal, 
                                                                     args.surface_facet, 
-                                                                    OUTPUT_DIR,  
+                                                                    OUTPUT_DIR,
+                                                                    model,  
                                                                     molecule_format=args.id_format)
-    print('Number of detected adsorption configurations: ', len(total_config_list))
 
     print("Screening adsorption configurations ...")
 
-    # get molecule energy from GNN
-    gas_graph = atoms_to_pyggraph(
-        molec_ase_obj, model.g_tol, model.g_sf, model.g_metal_2nn)    
-    energy_molecule = model.evaluate(gas_graph)
-    best_eads = 1000.0
-    for idx, ase_config_obj in enumerate(total_config_list):
-        prc = int((idx+1)/len(total_config_list)*TOT_ICN)
-        ensemble = gnn_predict(ase_config_obj)
-        if ensemble < best_eads:
-            best_poscar = ase_config_obj
-            best_ensemble = ensemble
-        print(f"Progress: {PRG_FULL*prc}{PRG_EMT*(TOT_ICN-prc)} ({prc*100/TOT_ICN}%)", end="\r")
-            
     # Remove all files with .xyz extension
     for root, dirs, files in os.walk(tmp_subdir):
         for file in files:
@@ -249,9 +291,7 @@ if __name__ == "__main__":
     os.remove(os.path.join(tmp_subdir, 'POSCAR'))
 
     metal_surface = args.metal + '(' + args.surface_facet + ')'
-    ener_most_stable_conf = best_ensemble - energy_molecule
     ensemble_most_stable_conf = best_ensemble
-    molecule_most_stable_conf = energy_molecule
     most_stable_conf_path = best_poscar
     system_title = iupac_name + ' on ' + metal_surface
     print('\n\nSystem: ', system_title) 
