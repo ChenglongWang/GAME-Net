@@ -20,7 +20,7 @@ class FGGraphDataset(InMemoryDataset):
     - process(): process raw_data and saves it into the processed_dir
     """
     def __init__(self,
-                 root,
+                 root: str,
                  identifier: str):
         self.root = str(root)
         self.pre_data = str(root) + "/pre_" + identifier
@@ -72,7 +72,7 @@ class FGGraphDataset(InMemoryDataset):
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family)
             graph_formula = get_graph_formula(data, ENCODER.categories_[0])
             data = Data(x=x, edge_index=edge_index, y=y, ener=y, family=family, formula=graph_formula)
-            if global_filter(data):  # To ensure correct adsorbate representation in the graph
+            if global_filter(data, ENCODER):  # To ensure correct adsorbate representation in the graph
                 if isomorphism_test(data, data_list):  # To ensure absence of duplicates graphs
                      data_list.append(data)              
         data, slices = self.collate(data_list)

@@ -647,11 +647,11 @@ def structure_to_graph(contcar_file: str,
     return Data(x=x, edge_index=edge_index)
 
 def atoms_to_pyggraph(atoms: Atoms,
-                       voronoi_tolerance: float,
-                       scaling_factor: dict,
-                       second_order: bool, 
-                       one_hot_encoder=ENCODER) -> Data:
-    """Create Pytorch Geometric graph from VASP chemical structure file (CONTCAR/POSCAR).
+                      voronoi_tolerance: float,
+                      scaling_factor: dict,
+                      second_order: bool, 
+                      one_hot_encoder: OneHotEncoder = ENCODER) -> Data:
+    """Create Pytorch Geometric graph from ASE Atoms object.
 
     Args:
         atoms (Atoms): ASE Atoms object.
@@ -659,7 +659,6 @@ def atoms_to_pyggraph(atoms: Atoms,
         scaling_factor (float): Scaling factor applied to metal radius of metals.
         second_order (bool): whether 2nd-order metal atoms are included.
         one_hot_encoder (optional): One-hot encoder. Defaults to ENCODER.
-
     Returns:
         graph (torch_geometric.data.Data): PyG graph representing the system under study.
     """

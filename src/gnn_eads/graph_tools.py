@@ -6,6 +6,11 @@ import torch
 import torch_geometric
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
+import networkx as nx
+from torch_geometric.utils.convert import to_networkx
+from torch_geometric.utils.convert import from_networkx
+from sklearn.preprocessing._encoders import OneHotEncoder
+
 
 from gnn_eads.constants import FULL_ELEM_LIST, MOL_ELEM, ENCODER, ELEMENT_LIST, RGB_COLORS
 from gnn_eads.functions import get_graph_formula
@@ -121,22 +126,23 @@ def visualize_graph(graph: Data,
     plt.draw()    
 
 
-def extract_adsorbate(graph: Data) -> Data:
+def extract_adsorbate(graph: Data, encoder: OneHotEncoder) -> Data:
     """Extract molecule from the adsorption graph,
-    removing metals and connections between metal and molecule.
+    removing metals and connections between metal and molecule. 
     
     Args:
         graph (torch_geometric.data.Data): Adsorption system in graph format
     Returns:
         adsorbate(torch_geometric.data.Data): Molecule in graph format
     """
-    CHONS = [ELEMENT_LIST.index(element) for element in MOL_ELEM]  # Get indeces of C,H,O,N,S in the encoder    
-    y = [None] * graph.num_nodes # function for new indexing
+    node_dim = graph.x.shape[1]
+    CHONS = [list(encoder.categories_[0]).index(element) for element in ["C", "H", "O", "N", "S"]] 
+    y = [None] * graph.num_nodes  # function for new indexing
     node_list, node_index, edge_list, edge_index = [], [], [], []  
     # 1) Node selection 
     counter = 0
     for atom in range(graph.num_nodes):
-        index = torch.where(graph.x[atom, :] == 1)[0].item()
+        index = torch.where(graph.x[atom, :] == 1)[0][0].item()
         if index in CHONS:
             y[atom] = counter
             node_index.append(atom)
@@ -156,7 +162,7 @@ def extract_adsorbate(graph: Data) -> Data:
             edge_index.append(link)
         switch = 0
     # 3) Graph construction
-    x = torch.zeros((len(node_list), len(ELEMENT_LIST)))
+    x = torch.zeros((len(node_list), node_dim))
     edge = torch.zeros((2, len(edge_index)), dtype=torch.long)
     for i in range(x.shape[0]):
         x[i, :] = node_list[i]
@@ -164,7 +170,7 @@ def extract_adsorbate(graph: Data) -> Data:
         for k in range(edge.shape[1]):
             edge[j, k] = ff(int(edge_list[k][j]))
     edge.to(torch.long)
-    return Data(x, edge)
+    return Data(x, edge), y
 
 
 def get_number_atoms(graph: Data, atom: str) -> int:
