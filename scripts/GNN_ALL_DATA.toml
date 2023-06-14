@@ -1,0 +1,58 @@
+# Configuration file for setting the hyperparameters for GNN training with train_GNN.py (TEMPLATE)
+
+[graph]  # Hyperparameters defining the graph dataset construction from the ASE database
+target = "e_ads_add"  # graph target (must be present as column in the database) (str)
+
+[graph.structure]   # Hyperparameters for graph structure generation from geometrical structures
+tolerance = 0.5            # Applied to all pairs of elements (float)
+scaling_factor = 2.0       # For atomic radii of metals (float)
+second_order_nn = true    # Whether to comprise also the NNs of the metals direclt interacting with the adsorbate (true/false)
+
+[graph.features]   # Graph nodes featurization
+adsorbate = false  # Distinguish molecule and surface atom nodes (true/false)
+ring = true       # Distinguish ring and non-ring nodes in the molecule (true/false)
+aromatic = true   # Distinguish aromatic and non-aromatic nodes in the molecule (true/false)
+radical = true    # Distinguish radical and non-radical nodes in the molecule (true/false)
+facet = true       # Include surface facet information in the surface atom nodes (true/false)
+
+
+[train]  # Hyperparameters defining the training procedure
+splits = 5                 # Initial splits of the starting dataset for train/val/test sets creation (int)
+test_set = true             # Whether generate test set or just split among train/val (true/false)
+batch_size = 32             # Batch size (int)
+epochs = 150                # Total number of iterations (epochs) (int)
+target_scaling = "std"      # Target scaling approach ("std" only available for now) ("std")
+loss_function = "mae"       # Loss function ("mae"/"mse"/"huber") 
+lr0 = 1e-3                  # Initial learning rate (float)
+patience = 5                # Patience of the lr-scheduler (int)
+factor = 0.7                # Decreasing factor of the lr-scheduler (float)
+minlr = 1e-7                # Minimum lr of the lr-scheduler (float)
+eps = 1e-9                  # Adam eps for ensuring numerical stability of the algorithm (float)
+weight_decay = 0            # Weight decay (see implementation in pytorch docs) (float)
+amsgrad = true              # Include amsgrad addition of adam optimizer (true/false)
+early_stopping = false      # Whether to include early stopping (true/false)
+es_patience = 5            # Early stopping patience (int)
+es_start_epoch = 100        # Epoch at which early stopper is activated (int)
+k_ensemble = 1              # Number of ensembles (int). Needed only when training a k-ensemble model
+
+
+[architecture]  # Hyperparameters defining the model architecture
+dim = 256                   # Layers' width (int)
+sigma = "ReLU"              # Activation function ("ReLU"/"tanh")
+bias = false                # Whether allowing bias in all layer formulas (true/false)
+n_linear = 0                # Number of dense layers at the beginning of the model (int)
+n_conv = 3                  # Number of convolutional layers (int)
+conv_layer = "SAGE"         # Convolutional operator ("SAGE"/"GATv2")
+adj_conv = true             # Add dense layer after convolutional layer (true/false)
+conv_normalize = false      # Layer normalization after convolutional layer (true/false)
+conv_root_weight = true     # Whether to include the root node in the convolutional layer (true/false)
+pool_layer = "GMT"          # Pooling layer ("GMT)
+pool_ratio = 0.25           # Pooling ratio for GMT pooling layer (float)
+pool_heads = 1              # Number of multihead attention blocks in the pooling layer (int)             
+pool_seq = "1"              # Pooling sequence (see PyG docs) ("1"/"2"/"3"/"4"/"5")
+pool_layer_norm = false     # Layer normalization after pooling layer (true/false)
+
+
+[data]   
+ase_database_path = "/home/smorandi/Desktop/gnn_eads/data/FG_dataset/FG_DATASET.db"  
+ase_database_key = "calc_type=adsorption"     # key for filtering the database (str)

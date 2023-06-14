@@ -13,9 +13,8 @@ import torch
 from torch_geometric.loader import DataLoader
 from sklearn.metrics import r2_score
 
-from gnn_eads.constants import ENCODER, FG_FAMILIES, DPI
-from gnn_eads.functions import get_graph_formula, get_number_atoms_from_label, split_percentage
-from gnn_eads.graph_tools import plotter
+from gnn_eads.constants import FG_FAMILIES, DPI
+from gnn_eads.graph_tools import graph_plotter
 from gnn_eads.plot_functions import *
 
 
@@ -59,11 +58,16 @@ def create_model_report(model_name: str,
     graph = configuration_dict["graph"]
     train = configuration_dict["train"]
     architecture = configuration_dict["architecture"]
+    ase_database_path = configuration_dict["data"]["ase_database_path"]
     
     # 4) Extract graph conversion parameters
-    voronoi_tol = graph["voronoi_tol"]
-    second_order_nn = graph["second_order_nn"]
-    scaling_factor = graph["scaling_factor"]
+    voronoi_tol = graph["structure"]["tolerance"]
+    second_order_nn = graph["structure"]["second_order_nn"]
+    scaling_factor = graph["structure"]["scaling_factor"]
+    node_adsorbate_descriptor = graph["features"]["adsorbate"]
+    node_ring_descriptor = graph["features"]["ring"]
+    node_aromatic_descriptor = graph["features"]["aromatic"]
+    node_radical_descriptor = graph["features"]["radical"]
     
     # 5) Extract model scaling parameters
     if train["target_scaling"] == "std":
@@ -110,19 +114,21 @@ def create_model_report(model_name: str,
     abs_error_train = [abs(error_train[i]) for i in range(N_train)]                   # Absolute Error (train set)
     abs_error_val = [abs(error_val[i]) for i in range(N_val)]                         # Absolute Error (val set)
     # Get data labels in train/val sets
-    train_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in train_loader.dataset]
-    val_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in val_loader.dataset]
+    train_label_list = [graph.formula for graph in train_loader.dataset]
+    val_label_list = [graph.formula for graph in val_loader.dataset]
     train_family_list = [graph.family for graph in train_loader.dataset]
     val_family_list = [graph.family for graph in val_loader.dataset]
+    train_facet_list = [graph.facet for graph in train_loader.dataset]
+    val_facet_list = [graph.facet for graph in val_loader.dataset]
     
     with open("{}/{}/train_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
-        writer.writerows(zip(train_label_list, train_family_list, z_true, z_pred, error_train, abs_error_train))    
+        writer.writerow(["System", "Family", "Surface", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(train_label_list, train_family_list, train_facet_list, z_true, z_pred, error_train, abs_error_train))    
     with open("{}/{}/validation_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
-        writer.writerows(zip(val_label_list, val_family_list, b_true, b_pred, error_val, abs_error_val))
+        writer.writerow(["System", "Family", "Surface", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(val_label_list, val_family_list, val_facet_list, b_true, b_pred, error_val, abs_error_val))
 
     # MAE trend during training
     train_list = mae_lists[0]
@@ -164,6 +170,10 @@ def create_model_report(model_name: str,
         file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
         file1.write("Atomic radii scaling factor = {}\n".format(scaling_factor))
         file1.write("Second order metal neighbours inclusion = {}\n".format(second_order_nn))
+        file1.write("Node adsorbate/surface descriptor = {}\n".format(node_adsorbate_descriptor))
+        file1.write("Node ring descriptor = {}\n".format(node_ring_descriptor))
+        file1.write("Node aromatic descriptor = {}\n".format(node_aromatic_descriptor))
+        file1.write("Node radical descriptor = {}\n".format(node_radical_descriptor))
         file1.write("TRAINING PROCESS\n")
         file1.write(run_period)
         file1.write("Dataset Size = {}\n".format(N_tot))
@@ -185,8 +195,9 @@ def create_model_report(model_name: str,
     
     # 13) Get info from test set if it has been monitored
     torch.save(test_loader, "{}/{}/test_loader.pth".format(model_path, model_name))
-    test_label_list = [get_graph_formula(graph, ENCODER.categories_[0]) for graph in test_loader.dataset]
+    test_label_list = [graph.formula for graph in test_loader.dataset]
     test_family_list = [graph.family for graph in test_loader.dataset]
+    test_facet_list = [graph.facet for graph in test_loader.dataset]
     N_test = len(test_loader.dataset)  
     N_tot = N_train + N_val + N_test    
     w_pred, w_true = [], []  # Test set
@@ -205,24 +216,18 @@ def create_model_report(model_name: str,
     # Save test set error of the samples            
     with open("{}/{}/test_set.csv".format(model_path, model_name), "w") as file4:
         writer = csv.writer(file4, delimiter='\t')
-        writer.writerow(["System", "Family", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
-        writer.writerows(zip(test_label_list, test_family_list, y_true, y_pred, error_test, abs_error_test))    
+        writer.writerow(["System", "Family", "Surface", "True_eV", "Prediction_eV", "Error_eV", "Abs_error_eV"])
+        writer.writerows(zip(test_label_list, test_family_list, test_facet_list, y_true, y_pred, error_test, abs_error_test))    
 
     # 14) FIGURES
-    # Histogram based on number of adsorbate atoms (train+val+test dataset)
-    n_list = [get_number_atoms_from_label(get_graph_formula(graph, ENCODER.categories_[0])) for graph in \
-              train_loader.dataset+val_loader.dataset+test_loader.dataset]
-    fig, ax = hist_num_atoms(n_list)
-    plt.savefig("{}/{}/num_atoms_hist.svg".format(model_path, model_name), bbox_inches='tight')
-    plt.close()
     # Distribution of the scaled energy labels in the train/val/test sets
     fig, ax = label_dist_train_val_test(train_loader, val_loader, test_loader)
     plt.savefig("{}/{}/label_dist_train_val_test.svg".format(model_path, model_name), bbox_inches='tight')
     plt.close()
     # Violinplot sorted by chemical family
-    fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
-    plt.savefig("{}/{}/test_violin_family.svg".format(model_path, model_name), bbox_inches='tight')
-    plt.close()
+    # fig, ax = violinplot_family(model, test_loader, std_tv, set(FG_FAMILIES))
+    # plt.savefig("{}/{}/test_violin_family.svg".format(model_path, model_name), bbox_inches='tight')
+    # plt.close()
     my_dict = {"train": train_loader, "val": val_loader, "test": test_loader}
     for key, value in my_dict.items():
         fig, ax = DFTvsGNN_plot(model, value, mean_tv, std_tv)
@@ -253,6 +258,10 @@ def create_model_report(model_name: str,
     file1.write("Voronoi tolerance = {} Angstrom\n".format(voronoi_tol))
     file1.write("Atomic radius scaling factor = {}\n".format(scaling_factor))
     file1.write("Second order metal neighbours inclusion = {}\n".format(second_order_nn))
+    file1.write("Node adsorbate/surface descriptor = {}\n".format(node_adsorbate_descriptor))
+    file1.write("Node ring descriptor = {}\n".format(node_ring_descriptor))
+    file1.write("Node aromatic descriptor = {}\n".format(node_aromatic_descriptor))
+    file1.write("Node radical descriptor = {}\n".format(node_radical_descriptor))
     file1.write("---------------------------------------------------------\n")
     file1.write("GNN ARCHITECTURE\n")
     file1.write("Activation function = {}\n".format(architecture["sigma"]))
@@ -302,7 +311,7 @@ def create_model_report(model_name: str,
                 file1.write("0{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], error_test[sample], sample))
             else:
                 file1.write("{}) {}    Error: {:.2f} eV    (index={})\n".format(counter, test_label_list[sample], error_test[sample], sample))
-            plotter(test_loader.dataset[sample])
+            graph_plotter(test_loader.dataset[sample])
             plt.savefig("{}/{}/Outliers/{}.svg".format(model_path, model_name, test_label_list[sample].strip()))
             plt.close()
     file1.close()

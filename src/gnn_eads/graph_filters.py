@@ -9,12 +9,10 @@ import numpy as np
 import networkx as nx
 from torch_geometric.data import Data
 from sklearn.preprocessing._encoders import OneHotEncoder
-
-from gnn_eads.constants import ELEMENT_LIST, NODE_FEATURES
-from gnn_eads.graph_tools import extract_adsorbate, convert_gpytorch_to_networkx
     
 
-def single_fragment_filter(graph: Data, encoder: OneHotEncoder) -> bool:
+def single_fragment_filter(graph: Data, 
+                           encoder: OneHotEncoder) -> bool:
     """
     Graph filter that checks if the adsorbate is fragmented in the graph.
     It is assumed that the input graph should represent a single adsorbate on the surface.
@@ -70,7 +68,8 @@ def single_fragment_filter(graph: Data, encoder: OneHotEncoder) -> bool:
         return True
 
     
-def H_connectivity_filter(graph: Data, encoder: OneHotEncoder) -> bool:
+def H_connectivity_filter(graph: Data, 
+                          encoder: OneHotEncoder) -> bool:
     """
     Graph filter that checks the connectivity of H atoms whithin the adsorbate.
     Each H atoms must be connected to maximum one atom among C, H, O, N, S in the molecule.
@@ -100,7 +99,8 @@ def H_connectivity_filter(graph: Data, encoder: OneHotEncoder) -> bool:
             return False
     return True
 
-def C_connectivity_filter(graph: Data, encoder: OneHotEncoder) -> bool:
+def C_connectivity_filter(graph: Data, 
+                          encoder: OneHotEncoder) -> bool:
     """
     Graph filter that checks the connectivity of C atoms whithin the adsorbate.
     Each C atom must be connected to maximum 4 atoms among C, H, O, N, S in the molecule.
@@ -128,7 +128,8 @@ def C_connectivity_filter(graph: Data, encoder: OneHotEncoder) -> bool:
     return True
 
 
-def global_filter(graph: Data, encoder: OneHotEncoder) -> bool:
+def global_filter(graph: Data, 
+                  encoder: OneHotEncoder) -> bool:
     """
     Functions that checks if the graph satisfies all the conditions to be considered as a valid graph.
     Checks correct connectivity of H and C atoms, and if the graph is the molecule. (metals are not considered)
@@ -144,7 +145,8 @@ def global_filter(graph: Data, encoder: OneHotEncoder) -> bool:
     return condition1 and condition2 and condition3
 
     
-def adsorption_filter(graph: Data, encoder: OneHotEncoder) -> bool:
+def adsorption_filter(graph: Data, 
+                      encoder: OneHotEncoder) -> bool:
     """
     Check presence of metal atoms in the adsorption graphs.
     sufficiency condition: if there is at least one atom different from C, H, O, N, S, 
@@ -165,50 +167,10 @@ def adsorption_filter(graph: Data, encoder: OneHotEncoder) -> bool:
         return False
     else:
         return True
+    
 
-
-def is_chiral(graph: Data):
-    """Filter for chiral molecules (OR STEREOISOMERS?)
-    In progress ...
-
-    Args:
-        graph (_type_): Input adsorption/molecule graph
-    Returns:
-        (bool)
-    """
-    # 1) Get molecule from adsorption configuration
-    molecule = extract_adsorbate(graph)
-    # 2) Find C atoms (potential stereocenters)
-    C_index = ELEMENT_LIST.index("C")
-    C_encoder = [0] * NODE_FEATURES
-    C_encoder[C_index] = 1
-    C_encoder = torch.tensor(C_encoder)
-    C_nodes_list = []
-    for node in range(molecule.num_nodes):
-        index = torch.where(molecule.x[node, :] == 1)[0].item()
-        if index == C_index:
-            C_nodes_list.append(node)
-    chiral_nodes = 0
-    for C_atom in C_nodes_list:
-        exploded_graph = explode_graph(molecule, C_atom)
-        nx_graph = convert_gpytorch_to_networkx(exploded_graph)
-        fragments = [nx_graph.subgraph(c).copy() for c in nx.connected_components(nx_graph)]
-        num_of_fragments = len(fragments)
-        diff_fragments = num_of_fragments
-        iso_list = []
-        if num_of_fragments == 4:
-            #test with 4
-            test_index = ((0,1), (0,2), (0,3), (1,2), (1,3), (2,3))
-            for tuple in test_index:
-                iso_list.append(nx.is_isomorphic(fragments[tuple[0]], fragments[tuple[1]]))
-                
-
-        #fragments = len(list(nx.connected_components(nx_graph)))
-        
-    return None
-
-
-def explode_graph(graph: Data, removed_node: int):
+def explode_graph(graph: Data, 
+                  removed_node: int) -> Data:
     """Explode graph into fragments keeping out the selected node
 
     Args:
@@ -219,8 +181,9 @@ def explode_graph(graph: Data, removed_node: int):
         exploded_graph (Data): Exploded graph.
     """
     # 1) Initialize graph feature matrix and connection for the new graph
-    x = torch.zeros((graph.num_nodes-1, NODE_FEATURES))
-    links = [graph.edge_index[1,i] for i in range(graph.num_edges) if graph.edge_index[0,i] == removed_node]
+    node_dim = graph.x.shape[1]
+    x = torch.zeros((graph.num_nodes-1, node_dim))
+    links = [graph.edge_index[1, i] for i in range(graph.num_edges) if graph.edge_index[0, i] == removed_node]
     edge = torch.zeros((2, graph.num_edges - 2 * len(links)))
     # 2) Find new indeces
     y = [None] * graph.num_nodes

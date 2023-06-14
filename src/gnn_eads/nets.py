@@ -7,18 +7,17 @@ from torch.nn import Linear
 from torch_geometric.nn import SAGEConv, GraphMultisetTransformer
 from torch_geometric.data import Data
 
-from gnn_eads.constants import NODE_FEATURES
 from gnn_eads.functions import get_graph_conversion_params, get_mean_std_from_model
 from gnn_eads.graph_tools import extract_adsorbate
     
     
 class FlexibleNet(torch.nn.Module):
     def __init__(self, 
+                 in_features: int,                 
                  dim: int=128,                  
-                 N_linear: int=1,
+                 N_linear: int=0,
                  N_conv: int=3,
                  adj_conv: bool=False,
-                 in_features: int=NODE_FEATURES,                 
                  sigma=torch.nn.ReLU(),
                  bias: bool=True,
                  conv=SAGEConv,
@@ -27,7 +26,8 @@ class FlexibleNet(torch.nn.Module):
                  pool_heads: int=4, 
                  pool_seq: list[str]=["GMPool_G", "SelfAtt", "GMPool_I"], 
                  pool_layer_norm: bool=False):
-        """Flexible Net for defining multiple GNN model architectures.
+        """
+        Flexible Net for defining multiple GNN model architectures.
 
         Args:
             dim (int, optional): Layer width. Defaults to 128.
@@ -91,13 +91,12 @@ class PreTrainedModel():
                                 map_location=torch.device("cpu"))
         self.model.load_state_dict(torch.load("{}/GNN.pth".format(self.model_path), 
                                               map_location=torch.device("cpu")))
-        self.model.eval()  # Inference mode
+        self.model.eval()  
         self.model.to("cpu")
         # Scaling parameters (only standardization for now)
         self.mean, self.std = get_mean_std_from_model(self.model_path)
         # Graph conversion parameters
         self.g_tol, self.g_sf, self.g_metal_2nn = get_graph_conversion_params(self.model_path)
-        # Model info
         self.num_parameters = sum(p.numel() for p in self.model.parameters())
                
         param_size, buffer_size = 0, 0
@@ -136,20 +135,20 @@ class EnsembleModel():
     
 
     def __repr__(self) -> str:
-        string = "Ensemble of {} pretrained graph neural networks for DFT ground state energy prediction.".format(self.num_ensembles)
+        string = "Ensemble of {} pretrained GNNs for DFT ground state energy prediction.".format(self.num_ensembles)
         string += "\nModel paths: {}".format([osp.abspath(model.model_path) for model in self.models])
         string += "\nNumber of parameters: {}".format(sum([model.num_parameters for model in self.models]))
         string += "\nModel size: {:.2f} MB".format(sum([model.size_all_mb for model in self.models]))
         return string
     
-    def evaluate(self, graph: Data) -> float:
-        """Evaluate graph energy
+    def evaluate(self, graph: Data) -> tuple[float]:
+        """Evaluate graph energy and its standard deviation
 
         Args:
             graph (Data): adsorption/molecular graph
 
         Returns:
-            float: system energy in eV
+            tuple[float]: system energy in eV and its standard deviation
         """
         with torch.no_grad():
             preds = [model.evaluate(graph) for model in self.models]

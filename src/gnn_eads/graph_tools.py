@@ -7,13 +7,9 @@ import torch_geometric
 from torch_geometric.data import Data
 import matplotlib.pyplot as plt
 import networkx as nx
-from torch_geometric.utils.convert import to_networkx
-from torch_geometric.utils.convert import from_networkx
 from sklearn.preprocessing._encoders import OneHotEncoder
 
-
-from gnn_eads.constants import FULL_ELEM_LIST, MOL_ELEM, ENCODER, ELEMENT_LIST, RGB_COLORS
-from gnn_eads.functions import get_graph_formula
+from gnn_eads.constants import FULL_ELEM_LIST, ENCODER, RGB_COLORS
 
 
 def convert_gpytorch_to_networkx(graph: Data) -> Graph:
@@ -65,7 +61,7 @@ def convert_networkx_to_gpytorch(graph_nx: Graph) -> Data:
     return graph_pyg
 
 
-def plotter(graph: Data,
+def graph_plotter(graph: Data,
             node_size: int=400,
             font_color: str="white",
             font_weight: str="bold",
@@ -97,38 +93,10 @@ def plotter(graph: Data,
     plt.draw()                    
 
 
-def visualize_graph(graph: Data,
-            node_size: int=400,
-            font_color: str="white",
-            font_weight: str="bold",
-            alpha: float=0.9, 
-            arrowsize: int=10,
-            width: float=1.2):
-    """
-    Visualize graph with atom labels and colors. 
-    Kamada_kawai_layout engine is applied as it gives the best visualization appearance.
-    Args:
-        graph(torch_geometric.data.Data): graph object in pyG format.
-    """
-    graph = convert_gpytorch_to_networkx(graph)
-    labels = get_node_attributes(graph, 'atom')
-    colors = list(get_node_attributes(graph, 'rgb').values()) 
-    draw_networkx(graph, 
-                  labels=labels, 
-                  node_size=node_size,
-                  font_color=font_color, 
-                  font_weight=font_weight,
-                  node_color=colors, 
-                  alpha=alpha, 
-                  arrowsize=arrowsize, 
-                  width=width,
-                  pos=kamada_kawai_layout(graph))
-    plt.draw()    
-
-
 def extract_adsorbate(graph: Data, encoder: OneHotEncoder) -> Data:
-    """Extract molecule from the adsorption graph,
-    removing metals and connections between metal and molecule. 
+    """
+    Extract molecule from the adsorption graph, removing metals and connections between 
+    metal and molecule. Node-featurization independent.
     
     Args:
         graph (torch_geometric.data.Data): Adsorption system in graph format
@@ -173,18 +141,3 @@ def extract_adsorbate(graph: Data, encoder: OneHotEncoder) -> Data:
     return Data(x, edge), y
 
 
-def get_number_atoms(graph: Data, atom: str) -> int:
-    """Return number of atoms of a specific element in the graph.
-
-    Args:
-        graph (torch_geometric.data.Data): graph sample
-        atom (str): atomic element present in the encoder
-    Returns:
-        n(int): number of atoms of the specified element in the graph
-    """
-    formula = get_graph_formula(graph)
-    if atom in formula:
-        index = formula.find(atom)
-        return int(formula[index+1])
-    else:
-        return "The defined element is not present in the graph."
