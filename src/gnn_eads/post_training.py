@@ -18,6 +18,23 @@ from gnn_eads.graph_tools import graph_plotter
 from gnn_eads.plot_functions import *
 
 
+def plot_loss(train_loss, val_loss, save_path):
+    epochs = range(1, len(train_loss) + 1)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(epochs, train_loss, 'b', label='Training MAE')
+    plt.plot(epochs, val_loss, 'r', label='Validation MAE')
+    plt.title('Training and Validation Loss')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.grid(True)
+
+    # Save the plot
+    plt.savefig(save_path)
+    plt.close()  # Close the figure to free up memory
+
+
 def create_model_report(model_name: str,
                         model_path: str,
                         configuration_dict: dict,
@@ -75,14 +92,9 @@ def create_model_report(model_name: str,
         std_tv = scaling_params[1]
     else:
         pass
-    
+
     # 6) Create directory structure where to store model training results
-    try:
-        os.mkdir("{}/{}".format(model_path, model_name))
-    except FileExistsError:
-        model_name = input("The name defined already exists in the provided directory: Provide a new one: ")
-        os.mkdir("{}/{}".format(model_path, model_name))
-    os.mkdir("{}/{}/Outliers".format(model_path, model_name))
+    (model_path / model_name / "Outliers").mkdir(parents=True, exist_ok=True)
 
     # 7) Store info of device on which model training has been performed
     if device != None:
@@ -139,12 +151,11 @@ def create_model_report(model_name: str,
     # 9) Save dataloaders for future use
     torch.save(train_loader, "{}/{}/train_loader.pth".format(model_path, model_name))
     torch.save(val_loader, "{}/{}/val_loader.pth".format(model_path, model_name))
-    
+
     # 10) Save model architecture and parameters
     torch.save(model, "{}/{}/model.pth".format(model_path, model_name))             # Save model architecture
     torch.save(model.state_dict(), "{}/{}/GNN.pth".format(model_path, model_name))  # Save model parameters
-        
-            
+
     # 11) Store Hyperparameters dict from input file
     with open('{}/{}/input.txt'.format(model_path, model_name), 'w') as g:
         print(configuration_dict, file=g)

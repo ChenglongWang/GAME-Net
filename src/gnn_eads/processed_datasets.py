@@ -50,7 +50,7 @@ class FGGraphDataset(InMemoryDataset):
             lines = infile.readlines()
         split_n = lambda x, n: [x[i:i+n] for i in range(0, len(x), n)]
         splitted = split_n(lines, 5)  # Each sample =  5 text lines
-        for block in splitted:        
+        for block in splitted:
             to_int = lambda x: [float(i) for i in x]
             _, elem, source, target, energy = block
             element_list = elem.split()

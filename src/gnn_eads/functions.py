@@ -17,11 +17,11 @@ from ase.io.vasp import read_vasp
 from ase import Atoms
 from networkx import Graph, set_node_attributes
 from torch_geometric.data import InMemoryDataset
- 
+
 from gnn_eads.constants import CORDERO
 
 
-def split_percentage(splits: int, test: bool=True) -> tuple[int]:
+def split_percentage(splits: int, test: bool = True) -> tuple[int]:
     """Return split percentage of the train, validation and test sets.
     One split represent the test set, one the validation set and the rest the train set.
     Args:
@@ -40,30 +40,31 @@ def split_percentage(splits: int, test: bool=True) -> tuple[int]:
         b = math.ceil(100 / splits)
         return a, b, b
     else:
-        return int((1 - 1/splits) * 100), math.ceil(100 / splits)
-    
+        return int((1 - 1 / splits) * 100), math.ceil(100 / splits)
 
-def get_voronoi_neighbourlist(atoms: Atoms, 
-                              tolerance: float, 
-                              scaling_factor: float, 
-                              molecule_elements: list[str]) -> np.ndarray:
+
+def get_voronoi_neighbourlist(
+    atoms: Atoms, tolerance: float, scaling_factor: float, molecule_elements: list[str]
+) -> np.ndarray:
     """
     Get connectivity list from Voronoi analysis, considering periodic boundary conditions.
     Assumption: The catalyst surface does not contain elements present in the adsorbate.
-    
+
     Args:
         atoms (Atoms): ASE Atoms object representing the adsorbate-metal system.
         tolerance (float): tolerance for the distance between two atoms to be considered connected.
         scaling_factor (float): scaling factor for the covalent radii of the metal atoms.
-        
+
     Returns:
         np.ndarray: connectivity list of the system. Each row represents a pair of connected atoms.
     """
-    
+
     # First condition to have two atoms connected: They must share a Voronoi facet
     coords_arr = np.repeat(np.expand_dims(np.copy(atoms.get_scaled_positions()), axis=0), 27, axis=0)
     mirrors = np.repeat(np.expand_dims(np.asarray(list(product([-1, 0, 1], repeat=3))), 1), coords_arr.shape[1], axis=1)
-    corrected_coords = np.reshape(coords_arr + mirrors, (coords_arr.shape[0] * coords_arr.shape[1], coords_arr.shape[2]))
+    corrected_coords = np.reshape(
+        coords_arr + mirrors, (coords_arr.shape[0] * coords_arr.shape[1], coords_arr.shape[2])
+    )
     corrected_coords = np.dot(corrected_coords, atoms.get_cell())
     translator = np.tile(np.arange(coords_arr.shape[1]), coords_arr.shape[0])
     vor_bonds = Voronoi(corrected_coords)
@@ -75,20 +76,25 @@ def get_voronoi_neighbourlist(atoms: Atoms,
     pairs_lst = []
     for pair in pairs_corr:
         distance = atoms.get_distance(pair[0], pair[1], mic=True)
-        threshold = CORDERO[atoms[pair[0]].symbol] + CORDERO[atoms[pair[1]].symbol] + tolerance + \
-                    (scaling_factor - 1.0) * ((atoms[pair[0]].symbol not in molecule_elements) * CORDERO[atoms[pair[0]].symbol] + \
-                                              (atoms[pair[1]].symbol not in molecule_elements) * CORDERO[atoms[pair[1]].symbol])
+        threshold = (
+            CORDERO[atoms[pair[0]].symbol]
+            + CORDERO[atoms[pair[1]].symbol]
+            + tolerance
+            + (scaling_factor - 1.0)
+            * (
+                (atoms[pair[0]].symbol not in molecule_elements) * CORDERO[atoms[pair[0]].symbol]
+                + (atoms[pair[1]].symbol not in molecule_elements) * CORDERO[atoms[pair[1]].symbol]
+            )
+        )
         if distance <= threshold:
             pairs_lst.append(pair)
 
     return np.sort(np.array(pairs_lst), axis=1)
 
 
-def atoms_to_nxgraph(atoms: Atoms, 
-                     voronoi_tolerance: float, 
-                     scaling_factor: float, 
-                     second_order: bool, 
-                     molecule_elements: list[str]) -> Graph:
+def atoms_to_nxgraph(
+    atoms: Atoms, voronoi_tolerance: float, scaling_factor: float, second_order: bool, molecule_elements: list[str]
+) -> Graph:
     """
     Convert ASE Atoms object to NetworkX graph, representing the adsorbate-surface system.
 
@@ -109,10 +115,10 @@ def atoms_to_nxgraph(atoms: Atoms,
 
     # 2) Get surface atoms that are neighbours of the adsorbate
     surface_neighbours = {
-        pair[1] if pair[0] in adsorbate_indexes else pair[0] 
-        for pair in neighbour_list 
-        if (pair[0] in adsorbate_indexes and atoms[pair[1]].symbol not in molecule_elements) or 
-           (pair[1] in adsorbate_indexes and atoms[pair[0]].symbol not in molecule_elements)
+        pair[1] if pair[0] in adsorbate_indexes else pair[0]
+        for pair in neighbour_list
+        if (pair[0] in adsorbate_indexes and atoms[pair[1]].symbol not in molecule_elements)
+        or (pair[1] in adsorbate_indexes and atoms[pair[0]].symbol not in molecule_elements)
     }
 
     if second_order:  # second order neighbours (neighbours of neighbours)
@@ -120,37 +126,40 @@ def atoms_to_nxgraph(atoms: Atoms,
             pair[1] if pair[0] == surface_atom_index else pair[0]
             for surface_atom_index in surface_neighbours
             for pair in neighbour_list
-            if (pair[0] == surface_atom_index and atoms[pair[1]].symbol not in molecule_elements) or 
-               (pair[1] == surface_atom_index and atoms[pair[0]].symbol not in molecule_elements)
+            if (pair[0] == surface_atom_index and atoms[pair[1]].symbol not in molecule_elements)
+            or (pair[1] == surface_atom_index and atoms[pair[0]].symbol not in molecule_elements)
         ]
         surface_neighbours.update(nl)
-        
+
     # 3) Construct graph with the atoms in the ensemble
     ensemble = Atoms(atoms[list(adsorbate_indexes) + list(surface_neighbours)], pbc=atoms.pbc, cell=atoms.cell)
     nx_graph = Graph()
     nx_graph.add_nodes_from(range(len(ensemble)))
     set_node_attributes(nx_graph, {i: ensemble[i].symbol for i in range(len(ensemble))}, "element")
-    ensemble_neighbour_list = get_voronoi_neighbourlist(ensemble, voronoi_tolerance, scaling_factor)
+    ensemble_neighbour_list = get_voronoi_neighbourlist(ensemble, voronoi_tolerance, scaling_factor, molecule_elements)
     ensemble_neighbour_list = np.concatenate((ensemble_neighbour_list, ensemble_neighbour_list[:, [1, 0]]))
 
     if not second_order:  # If not second order, remove connections between metal atoms
-        ensemble_neighbour_list = [pair for pair in ensemble_neighbour_list if not (ensemble[pair[0]].symbol not in molecule_elements and ensemble[pair[1]].symbol not in molecule_elements)]
-        
+        ensemble_neighbour_list = [
+            pair
+            for pair in ensemble_neighbour_list
+            if not (
+                ensemble[pair[0]].symbol not in molecule_elements and ensemble[pair[1]].symbol not in molecule_elements
+            )
+        ]
+
     nx_graph.add_edges_from(ensemble_neighbour_list)
     return nx_graph
 
 
-def create_loaders(dataset: InMemoryDataset,
-                   split: int,
-                   batch_size:int,
-                   test:bool=True) -> tuple[DataLoader]:
+def create_loaders(dataset: InMemoryDataset, split: int, batch_size: int, test: bool = True) -> tuple[DataLoader]:
     """
     Create dataloaders for training, validation and test.
     Args:
         datasets (tuple): tuple containing the HetGraphDataset susbsets.
         split (int): number of splits to generate train/val/test sets.
         batch_size (int): batch size. Default to 32.
-        test (bool): Whether to generate train/val/test loaders or just train/val.    
+        test (bool): Whether to generate train/val/test loaders or just train/val.
     Returns:
         (tuple): tuple with dataloaders for training, validation and test.
     """
@@ -159,12 +168,12 @@ def create_loaders(dataset: InMemoryDataset,
     sep = n_items // split
     dataset = dataset.shuffle()
     if test:
-        test_loader += (dataset[:sep])
-        val_loader += (dataset[sep:sep*2])
-        train_loader += (dataset[sep*2:])
+        test_loader += dataset[:sep]
+        val_loader += dataset[sep : sep * 2]
+        train_loader += dataset[sep * 2 :]
     else:
-        val_loader += (dataset[:sep])
-        train_loader += (dataset[sep:])
+        val_loader += dataset[:sep]
+        train_loader += dataset[sep:]
     train_n = len(train_loader)
     val_n = len(val_loader)
     test_n = len(test_loader)
@@ -175,24 +184,30 @@ def create_loaders(dataset: InMemoryDataset,
         test_loader = DataLoader(test_loader, batch_size=batch_size, shuffle=False)
         a, b, c = split_percentage(split)
         print("Data split (train/val/test): {}/{}/{} %".format(a, b, c))
-        print("Training data = {} Validation data = {} Test data = {} (Total = {})".format(train_n, val_n, test_n, total_n))
+        print(
+            "Training data = {} Validation data = {} Test data = {} (Total = {})".format(
+                train_n, val_n, test_n, total_n
+            )
+        )
         return (train_loader, val_loader, test_loader)
     else:
-        print("Data split (train/val): {}/{} %".format(int(100*(split-1)/split), int(100/split)))
+        print("Data split (train/val): {}/{} %".format(int(100 * (split - 1) / split), int(100 / split)))
         print("Training data = {} Validation data = {} (Total = {})".format(train_n, val_n, total_n))
         return (train_loader, val_loader, None)
 
 
-def scale_target(train_loader: DataLoader,
-                 val_loader: DataLoader,
-                 test_loader: DataLoader=None,
-                 mode: str='std',
-                 verbose: bool=True,
-                 test: bool=True):
+def scale_target(
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    test_loader: DataLoader = None,
+    mode: str = "std",
+    verbose: bool = True,
+    test: bool = True,
+):
     """
     Apply target scaling to the whole dataset using training and validation sets.
     Args:
-        train_loader (torch_geometric.loader.DataLoader): training dataloader 
+        train_loader (torch_geometric.loader.DataLoader): training dataloader
         val_loader (torch_geometric.loader.DataLoader): validation dataloader
         test_loader (torch_geometric.loader.DataLoader): test dataloader
     Returns:
@@ -208,7 +223,7 @@ def scale_target(train_loader: DataLoader,
         y_list.append(graph.target.item())
     y_tensor = torch.tensor(y_list)
     # Standardization
-    mean_tv = y_tensor.mean(dim=0, keepdim=True)  
+    mean_tv = y_tensor.mean(dim=0, keepdim=True)
     std_tv = y_tensor.std(dim=0, keepdim=True)
     # Normalization
     max_tv = y_tensor.max()
@@ -246,7 +261,7 @@ def scale_target(train_loader: DataLoader,
             return train_loader, val_loader, test_loader, mean_tv.item(), std_tv.item()
         else:
             return train_loader, val_loader, None, mean_tv.item(), std_tv.item()
-    elif mode == "norm": 
+    elif mode == "norm":
         if verbose:
             print("Target Scaling (Normalization) applied successfully")
             print("(Train+Val) min: {:.2f} eV".format(min_tv.item()))
@@ -260,13 +275,9 @@ def scale_target(train_loader: DataLoader,
         return train_loader, val_loader, test_loader, 0, 1
 
 
-def train_loop(model,
-               device:str,
-               train_loader: DataLoader,
-               optimizer,
-               loss_fn):
+def train_loop(model, device: str, train_loader: DataLoader, optimizer, loss_fn):
     """
-    Run training iteration (epoch) 
+    Run training iteration (epoch)
     For each batch in the epoch, the following actions are performed:
     1) Move the batch to the training device
     2) Forward pass through the GNN model and compute loss
@@ -279,30 +290,28 @@ def train_loop(model,
         optimizer(): optimizer used during training.
         loss_fn(): Loss function used for the training.
     Returns:
-        loss_all, mae_all (tuple[float]): Loss function and MAE of the whole epoch.   
+        loss_all, mae_all (tuple[float]): Loss function and MAE of the whole epoch.
     """
-    model.train()  
+    model.train()
     loss_all, mae_all = 0, 0
     for batch in train_loader:
         batch = batch.to(device)
-        optimizer.zero_grad()                     # Set gradients of all tensors to zero
+        optimizer.zero_grad()  # Set gradients of all tensors to zero
+        output = model(batch)
         loss = loss_fn(model(batch), batch.y)
-        mae = F.l1_loss(model(batch), batch.y)    # For comparison with val/test data
-        loss.backward()                           # Get gradient of loss function wrt parameters
+        mae = F.l1_loss(model(batch), batch.y)  # For comparison with val/test data
+        loss.backward()  # Get gradient of loss function wrt parameters
         loss_all += loss.item() * batch.num_graphs
         mae_all += mae.item() * batch.num_graphs
-        optimizer.step()                          # Update model parameters
+        optimizer.step()  # Update model parameters
     loss_all /= len(train_loader.dataset)
     mae_all /= len(train_loader.dataset)
     return loss_all, mae_all
 
 
-def test_loop(model,
-              loader: DataLoader,
-              device: str,
-              std: float,
-              mean: float=None, 
-              scaled_graph_label: bool= True) -> float:
+def test_loop(
+    model, loader: DataLoader, device: str, std: float, mean: float = None, scaled_graph_label: bool = True
+) -> float:
     """
     Run test or validation iteration (epoch).
     For each batch in the validation/test set, the following steps are performed:
@@ -320,24 +329,24 @@ def test_loop(model,
     Returns:
         error(float): Mean Absolute Error (MAE) of the test loader.
     """
-    model.eval()   
+    model.eval()
     error = 0
     for batch in loader:
         batch = batch.to(device)
         if scaled_graph_label == False:  # label in eV
             error += (model(batch) * std + mean - batch.y).abs().sum().item()
         else:  #  Scaled label (unitless)
-            error += (model(batch) * std - batch.y * std).abs().sum().item()   
-    return error / len(loader.dataset) 
+            error += (model(batch) * std - batch.y * std).abs().sum().item()
+    return error / len(loader.dataset)
 
 
-def get_mean_std_from_model(path:str) -> tuple[float]:
-    """Get mean and standard deviation used for scaling the target values 
+def get_mean_std_from_model(path: str) -> tuple[float]:
+    """Get mean and standard deviation used for scaling the target values
        from the selected trained model.
 
     Args:
         model_name (str): GNN model path.
-    
+
     Returns:
         mean, std (tuple[float]): mean and standard deviation for scaling the targets.
     """
@@ -370,15 +379,17 @@ def get_graph_conversion_params(path: str) -> tuple:
                 second_order_nn = True
             else:
                 second_order_nn = False
-    return voronoi_tol, scaling_factor, second_order_nn 
+    return voronoi_tol, scaling_factor, second_order_nn
 
 
-def structure_to_graph(contcar_file: str,
-                       voronoi_tolerance: float,
-                       scaling_factor: dict,
-                       second_order: bool, 
-                       one_hot_encoder: OneHotEncoder, 
-                       molecule_elements: list[str]) -> Data:
+def structure_to_graph(
+    contcar_file: str,
+    voronoi_tolerance: float,
+    scaling_factor: dict,
+    second_order: bool,
+    one_hot_encoder: OneHotEncoder,
+    molecule_elements: list[str],
+) -> Data:
     """Create Pytorch Geometric graph from VASP chemical structure file (CONTCAR/POSCAR).
 
     Args:
@@ -393,7 +404,7 @@ def structure_to_graph(contcar_file: str,
     """
     atoms = read_vasp(contcar_file)
     nx_graph = atoms_to_nxgraph(atoms, voronoi_tolerance, scaling_factor, second_order, molecule_elements)
-    species_list = [nx_graph.nodes[node]['element'] for node in nx_graph.nodes]
+    species_list = [nx_graph.nodes[node]["element"] for node in nx_graph.nodes]
     edge_tails = [edge[0] for edge in nx_graph.edges] + [edge[1] for edge in nx_graph.edges]
     edge_heads = [edge[1] for edge in nx_graph.edges] + [edge[0] for edge in nx_graph.edges]
     elem_array = np.array(species_list).reshape(-1, 1)
@@ -402,12 +413,15 @@ def structure_to_graph(contcar_file: str,
     x = torch.tensor(elem_enc, dtype=torch.float)
     return Data(x=x, edge_index=edge_index)
 
-def atoms_to_pyggraph(atoms: Atoms,
-                      voronoi_tolerance: float,
-                      scaling_factor: dict,
-                      second_order: bool, 
-                      one_hot_encoder: OneHotEncoder, 
-                      molecule_elements: list[str]) -> Data:
+
+def atoms_to_pyggraph(
+    atoms: Atoms,
+    voronoi_tolerance: float,
+    scaling_factor: dict,
+    second_order: bool,
+    one_hot_encoder: OneHotEncoder,
+    molecule_elements: list[str],
+) -> Data:
     """
     Create Pytorch Geometric graph from ASE Atoms object.
     Skeletal graph is generated with this function, i.e. no features are added to the nodes, except
@@ -423,7 +437,7 @@ def atoms_to_pyggraph(atoms: Atoms,
         graph (torch_geometric.data.Data): PyG graph representing the system under study.
     """
     nx_graph = atoms_to_nxgraph(atoms, voronoi_tolerance, scaling_factor, second_order, molecule_elements)
-    species_list = (nx_graph.nodes[node]['element'] for node in nx_graph.nodes)
+    species_list = (nx_graph.nodes[node]["element"] for node in nx_graph.nodes)
     edge_tails_heads = [(edge[0], edge[1]) for edge in nx_graph.edges]
     edge_tails = [x for x, y in edge_tails_heads] + [y for x, y in edge_tails_heads]
     edge_heads = [y for x, y in edge_tails_heads] + [x for x, y in edge_tails_heads]
@@ -434,43 +448,47 @@ def atoms_to_pyggraph(atoms: Atoms,
     return Data(x=x, edge_index=edge_index)
 
 
-def get_graph_sample(path: str, 
-                     surface_path: str,
-                     voronoi_tolerance: float, 
-                     scaling_factor: dict, 
-                     second_order: bool,
-                     encoder: OneHotEncoder,
-                     molecule_elements: list[str],
-                     gas_mol: bool=False,
-                     family: str=None, 
-                     surf_multiplier: int=None, 
-                     from_poscar: bool=False) -> Data:
-    """ 
+def get_graph_sample(
+    path: str,
+    surface_path: str,
+    voronoi_tolerance: float,
+    scaling_factor: dict,
+    second_order: bool,
+    encoder: OneHotEncoder,
+    molecule_elements: list[str],
+    gas_mol: bool = False,
+    family: str = None,
+    surf_multiplier: int = None,
+    from_poscar: bool = False,
+) -> Data:
+    """
     Create labelled Pytroch Geometric graph from VASP calculation.
-    Args: 
+    Args:
         path (str): path to the VASP directory of the calculation. OUTCAR and CONTCAR/POSCAR files are required.
         surface_path (str): path to the VASP calculation of the empty metal slab. OUTCAR is required.
         voronoi_tolerance (float): tolerance applied during the conversion to graph
         scaling_factor (float): scaling parameter for the atomic radii of metals
         second_order (bool): Inclusion of 2-hop metal neighbours
-        encoder (OneHotEncoder): one-hot encoder used to represent atomic elements   
+        encoder (OneHotEncoder): one-hot encoder used to represent atomic elements
         gas_mol (bool): Whether the system is a gas molecule
         family (str): Family the system belongs to (e.g. "aromatics")
         surf_multiplier (int): Number of times the surface provided is repeated in the supercell (e.g. 2 for 2x2 surface)
         from_poscar (bool): Whether to read the geometry from the POSCAR file (True) or the CONTCAR file (False)
-    Returns: 
+    Returns:
         pyg_graph (Data): Labelled graph in Pytorch Geometric format
     """
     # Select from which file to read the geometry
     vasp_geometry_file = "POSCAR" if from_poscar else "CONTCAR"
     # Convert the structure to a graph
-    pyg_graph = structure_to_graph("{}/{}".format(path, vasp_geometry_file),
-                             voronoi_tolerance=voronoi_tolerance, 
-                             scaling_factor=scaling_factor,
-                             second_order=second_order, 
-                             one_hot_encoder=encoder, 
-                             molecule_elements=molecule_elements)
-    # Label the graph with the energy of the system 
+    pyg_graph = structure_to_graph(
+        "{}/{}".format(path, vasp_geometry_file),
+        voronoi_tolerance=voronoi_tolerance,
+        scaling_factor=scaling_factor,
+        second_order=second_order,
+        one_hot_encoder=encoder,
+        molecule_elements=molecule_elements,
+    )
+    # Label the graph with the energy of the system
     p1 = Popen(["grep", "energy  w", "{}/OUTCAR".format(path)], stdout=PIPE)
     p2 = Popen(["tail", "-1"], stdin=p1.stdout, stdout=PIPE)
     p3 = Popen(["awk", "{print $NF}"], stdin=p2.stdout, stdout=PIPE)
@@ -482,14 +500,14 @@ def get_graph_sample(path: str,
         surf_energy = float(ps3.communicate()[0].decode("utf-8"))
         if surf_multiplier is not None:
             surf_energy *= surf_multiplier
-        pyg_graph.y -= surf_energy  
+        pyg_graph.y -= surf_energy
     pyg_graph.family = family if family is not None else "None"
     return pyg_graph
 
 
 def get_id(graph_params: dict) -> str:
     """
-    Returns string identifier associated to a specific graph representation setting, 
+    Returns string identifier associated to a specific graph representation setting,
     consisting of voronoi tolerance, metals' scaling factor, and 2-hop metals inclusion used to convert
     a chemical structure to a graph.
     Args:
@@ -498,7 +516,7 @@ def get_id(graph_params: dict) -> str:
     Returns:
         identifier (str): String defining graph settings.
     """
-    identifier = str(graph_params["voronoi_tol"]).replace(".","")
+    identifier = str(graph_params["voronoi_tol"]).replace(".", "")
     identifier += "_"
     identifier += str(graph_params["second_order_nn"])
     identifier += "_"
@@ -507,7 +525,7 @@ def get_id(graph_params: dict) -> str:
     return identifier
 
 
-def surf(metal:str) -> str:
+def surf(metal: str) -> str:
     """
     Returns metal facet considered as function of metal present in the FG-dataset.
     Args:
@@ -521,8 +539,9 @@ def surf(metal:str) -> str:
     elif metal == "Fe":
         return "100"
     else:
-        return "0001"  
-    
+        return "0001"
+
+
 class EarlyStopper:
     """
     Early stopper for training loop.
@@ -530,12 +549,13 @@ class EarlyStopper:
         patience (int): number of epochs to wait before turning on the early stopper
         start_epoch (int): epoch at which to start counting
     """
+
     def __init__(self, patience: int, start_epoch: int):
         self.patience = patience
         self.start_epoch = start_epoch
         self.counter = 0
         self.min_validation_loss = np.inf
-        
+
     def stop(self, epoch: int, validation_loss: float) -> bool:
         """
         Check whether to stop training.
@@ -546,7 +566,7 @@ class EarlyStopper:
         """
         if epoch < self.start_epoch:
             return False
-        else:            
+        else:
             if validation_loss < self.min_validation_loss:
                 self.min_validation_loss = validation_loss
                 self.counter = 0
@@ -565,29 +585,28 @@ def split_list(a: list, n: int):
         (list): list of chunks
     """
     k, m = divmod(len(a), n)
-    return (a[i*k+min(i, m):(i+1)*k+min(i+1, m)] for i in range(n))
+    return (a[i * k + min(i, m) : (i + 1) * k + min(i + 1, m)] for i in range(n))
 
-def create_loaders_nested_cv(dataset: InMemoryDataset, 
-                             split: int, 
-                             batch_size: int):
+
+def create_loaders_nested_cv(dataset: InMemoryDataset, split: int, batch_size: int):
     """
     Create dataloaders for training, validation and test sets for nested cross-validation.
     Args:
         datasets(tuple): tuple containing the HetGraphDataset objects.
         split(int): number of splits to generate train/val/test sets
-        batch(int): batch size    
+        batch(int): batch size
     Returns:
         (tuple): tuple with dataloaders for training, validation and testing.
     """
     # Create list of lists, where each list contains the datasets for a split.
     chunk = [[] for _ in range(split)]
-    
+
     dataset.shuffle()
     iterator = split_list(dataset, split)
     for index, item in enumerate(iterator):
         chunk[index] += item
     chunk = sorted(chunk, key=len)
-    # Create dataloaders for each split.    
+    # Create dataloaders for each split.
     for index in range(len(chunk)):
         proxy = copy(chunk)
         test_loader = DataLoader(proxy.pop(index), batch_size=batch_size, shuffle=False)
@@ -596,4 +615,4 @@ def create_loaders_nested_cv(dataset: InMemoryDataset,
             val_loader = DataLoader(proxy2.pop(index2), batch_size=batch_size, shuffle=False)
             flatten_training = [item for sublist in proxy2 for item in sublist]  # flatten list of lists
             train_loader = DataLoader(flatten_training, batch_size=batch_size, shuffle=True)
-            yield deepcopy((train_loader, val_loader, test_loader))          
+            yield deepcopy((train_loader, val_loader, test_loader))
